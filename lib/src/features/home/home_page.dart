@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/device/device_services.dart';
 import '../../core/network/connectivity_provider.dart';
 import '../../core/time/providers.dart';
 import '../../features/auth/auth_controller.dart';
@@ -92,9 +93,7 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
                           await ref.read(attendanceControllerProvider.notifier).mark(logType: next);
                         } catch (e) {
                           final msg = (e is StateError && e.message is String) ? e.message as String : 'unknown';
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(_friendlyError(t, msg))),
-                          );
+                          await _handleError(context, t, msg);
                         }
                       },
                     ),
@@ -150,6 +149,48 @@ String _friendlyError(AppTexts t, String msg) {
       return 'Biometric verification failed.';
     default:
       return 'Unable to mark attendance. Please try again.';
+  }
+}
+
+Future<void> _handleError(BuildContext context, AppTexts t, String msg) async {
+  final errorText = _friendlyError(t, msg);
+  
+  if (msg == 'location_permission_required') {
+    // Show dialog with option to open settings
+    final shouldOpen = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Location Permission Required'),
+        content: Text(errorText),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+    
+    if (shouldOpen == true) {
+      final opened = await DeviceServices.openLocationSettings();
+      if (!opened) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unable to open settings')),
+          );
+        }
+      }
+    }
+  } else {
+    if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorText)),
+      );
+    }
   }
 }
 
@@ -417,7 +458,7 @@ class _PunchButton extends StatelessWidget {
                 ),
               ),
             ],
-      ),
+          ),
     );
   }
 }
