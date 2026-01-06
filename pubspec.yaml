@@ -1,0 +1,46 @@
+name: alkhora_ess
+description: ALKHORA Employee Self Service app for ERPNext (Frappe Cloud).
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Networking + session cookies
+  dio: ^5.7.0
+  cookie_jar: ^4.0.8
+  dio_cookie_manager: ^3.1.1
+  path_provider: ^2.1.5
+
+  # State + routing
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+
+  # Security
+  flutter_secure_storage: ^9.2.2
+  local_auth: ^2.3.0
+
+  # Device / offline
+  geolocator: ^13.0.2
+  permission_handler: ^11.3.1
+  connectivity_plus: ^6.1.1
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # UX
+  intl: ^0.20.2
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
