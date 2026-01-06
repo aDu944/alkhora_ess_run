@@ -1,7 +1,8 @@
 import '../../core/network/erpnext_repository.dart';
 
-class AttendanceRepository extends ERPNextRepository {
-  AttendanceRepository(super.client);
+/// Repository for Attendance doctype (processed attendance records)
+class AttendanceRecordsRepository extends ERPNextRepository {
+  AttendanceRecordsRepository(super.client);
 
   @override
   String get doctype => 'Attendance';

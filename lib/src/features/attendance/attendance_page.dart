@@ -2,19 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/network/employee_provider.dart';
 import '../../core/network/providers.dart';
-import '../../features/auth/auth_controller.dart';
-import '../../features/home/attendance_repository.dart';
 import '../../l10n/app_texts.dart';
 import 'attendance_repository.dart';
-
-import '../../core/network/employee_provider.dart';
 
 final attendanceRecordsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final client = await ref.watch(frappeClientProvider.future);
   final employeeId = await ref.watch(employeeIdProvider.future);
   
-  final attRepo = AttendanceRepository(client);
+  final attRepo = AttendanceRecordsRepository(client);
   return attRepo.getCurrentMonthAttendance(employeeId);
 });
 
