@@ -38,5 +38,19 @@ class OfflineQueue {
       },
     );
   }
+
+  static Future<int> countAttendance() async {
+    return loadAttendance().length;
+  }
+
+  static Future<void> deleteAttendanceByIds(List<String> ids) async {
+    if (ids.isEmpty) return;
+    final list = loadAttendance().toList(growable: true);
+    list.removeWhere((item) {
+      final id = item['id'] as String?;
+      return id != null && ids.contains(id);
+    });
+    await replaceAttendance(list);
+  }
 }
 

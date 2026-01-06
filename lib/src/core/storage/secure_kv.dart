@@ -19,5 +19,7 @@ class SecureKeys {
   static const baseUrl = 'baseUrl';
   static const lastUser = 'lastUser';
   static const biometricEnabled = 'biometricEnabled';
+  static const ntpOffsetMs = 'ntpOffsetMs';
+  static const ntpLastSyncIso = 'ntpLastSyncIso';
 }
 

@@ -10,6 +10,11 @@ class AttendanceRepository {
   Dio get _dio => _client.dio;
 
   Future<String> getEmployeeIdForUser(String user) async {
+    final emp = await getEmployeeForUser(user);
+    return emp['name'] as String;
+  }
+
+  Future<Map<String, dynamic>> getEmployeeForUser(String user) async {
     final res = await _dio.get(
       '/api/resource/Employee',
       queryParameters: {
@@ -24,7 +29,28 @@ class AttendanceRepository {
     if (id == null || id.isEmpty) {
       throw StateError('No Employee linked to user_id=$user');
     }
-    return id;
+    return Map<String, dynamic>.from(first!);
+  }
+
+  Future<List<Map<String, dynamic>>> getCheckins({
+    required String employeeId,
+    required DateTime from,
+    required DateTime to,
+    int limit = 200,
+    bool asc = true,
+  }) async {
+    final res = await _dio.get(
+      '/api/resource/Employee Checkin',
+      queryParameters: {
+        'fields': '["name","log_type","time"]',
+        'filters': '[[\"employee\",\"=\",\"$employeeId\"],[\"time\",\">=\",\"${from.toIso8601String()}\"],[\"time\",\"<=\",\"${to.toIso8601String()}\"]]',
+        'order_by': asc ? 'time asc' : 'time desc',
+        'limit_page_length': limit,
+      },
+    );
+    final data = (res.data is Map) ? (res.data['data'] as List?) : null;
+    if (data == null) return [];
+    return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   Future<Map<String, dynamic>?> getLastCheckin(String employeeId) async {
