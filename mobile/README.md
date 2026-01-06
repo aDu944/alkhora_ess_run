@@ -1,31 +1,12 @@
+<<<<<<< Current (Your changes)
+=======
 ## ALKHORA ESS (Flutter) – developer notes
 
 ### Base URL
 
 Configured in `lib/src/core/config/app_config.dart`:
 
-<<<<<<< Current (Your changes)
 - `https://bms.alkhora.com`
-=======
-- **Flutter app source** under `mobile/` (UI + ERPNext API integration).
-- Session login using **existing ERPNext users** (email/username + password).
-- **Biometric unlock** (fingerprint/face) to open the app after first login.
-- **Attendance check-in/out**:
-  - Captures **GPS** location (lat/lng).
-  - Works **offline** by queueing check-ins (SQLite) and syncing later.
-  - Uses **NTP-based time** (cached offset) to reduce device-clock tampering.
-  - Optional **geofence lock** + basic **mock location** blocking.
-- Navigation + placeholder screens for:
-  - Leave (view/apply + balance)
-  - Attendance records
-  - Payslips
-  - Expense claims
-  - Announcements
-  - Profile/personal info
-  - Holiday calendar
-  - Document requests
-  - Manager approvals (via assigned `ToDo`)
->>>>>>> Incoming (Background Agent changes)
 
 You can override later by storing another URL in secure storage (`SecureKeys.baseUrl`).
 
@@ -60,7 +41,17 @@ ERPNext doctypes / endpoints used:
 
 Offline behavior:
 
-- When offline, check-ins are queued in Hive (`OfflineQueue`) and synced when back online.
+- When offline, check-ins are queued in SQLite (`OfflineQueue`) and synced when back online.
+
+Time integrity:
+
+- Punch timestamps use a cached **NTP offset** (package `ntp`) instead of trusting the device clock directly.
+- If the device is offline, the app uses the **last known NTP offset** (if available) and records metadata on the queued item.
+
+Geofencing & anti-spoofing:
+
+- The main punch button is **locked** when outside the configured office geofence (`AppConfig.officeLatitude/Longitude/RadiusMeters`).
+- “Mock location” (GPS spoofing) attempts are blocked using `Position.isMocked` (Android-supported via `geolocator`).
 
 ### Permissions / ERPNext configuration (recommended)
 
@@ -90,16 +81,4 @@ Ensure employee role permissions allow:
 - Manager approvals:
   - recommended to load assigned approvals via `ToDo` (`allocated_to == logged_user`)
 
-## Admin & reporting (backend) – recommended approach
-
-This repo currently contains the mobile app only. For:
-
-- **CSV/PDF export** (weekly/monthly hours worked)
-- **Anomaly detection** (overtime thresholds, outside-geofence punches)
-
-Recommended implementation is an ERPNext custom app (or Server Scripts) that:
-
-- Computes working hours by pairing `Employee Checkin` IN/OUT events per employee/day.
-- Exposes a whitelisted API method for HR (or adds a report/dashboard) to export CSV/PDF.
-- Flags anomalies into a doctype (e.g., `Attendance Anomaly`) and/or sends notifications to HR.
-
+>>>>>>> Incoming (Background Agent changes)
