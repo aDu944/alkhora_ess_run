@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/attendance/attendance_page.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/auth/login_page.dart';
 import '../features/home/home_page.dart';
+import '../features/leave/leave_page.dart';
 import '../features/more/more_page.dart';
+import '../features/payslip/payslip_page.dart';
 import '../features/placeholders/placeholder_page.dart';
 import '../features/splash/splash_page.dart';
 
@@ -43,15 +46,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'leave',
-            builder: (_, __) => const PlaceholderPage(title: 'Leave'),
+            builder: (_, __) => const LeavePage(),
           ),
           GoRoute(
             path: 'attendance',
-            builder: (_, __) => const PlaceholderPage(title: 'Attendance'),
+            builder: (_, __) => const AttendancePage(),
           ),
           GoRoute(
             path: 'payslips',
-            builder: (_, __) => const PlaceholderPage(title: 'Payslips'),
+            builder: (_, __) => const PayslipPage(),
           ),
           GoRoute(
             path: 'expenses',
