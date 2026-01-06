@@ -1,5 +1,3 @@
-<<<<<<< Current (Your changes)
-=======
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -451,4 +449,3 @@ Duration _workedWithinRangeLocal(
   return Duration(milliseconds: totalMs);
 }
 
->>>>>>> Incoming (Background Agent changes)

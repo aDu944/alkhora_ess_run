@@ -1,8 +1,7 @@
-<<<<<<< Current (Your changes)
-=======
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +24,7 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderStateMixin {
   late final AnimationController _rippleCtrl;
   Timer? _ticker;
+  static const String _buildStamp = 'home-ui-2026-01-06-01';
 
   @override
   void initState() {
@@ -117,6 +117,12 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
               right: 14,
               bottom: 14,
               child: _OfflineIndicator(),
+            ),
+          if (kDebugMode)
+            const Positioned(
+              left: 12,
+              bottom: 12,
+              child: _DebugStamp(text: _buildStamp),
             ),
         ],
       ),
@@ -651,6 +657,30 @@ class _OfflineIndicator extends StatelessWidget {
   }
 }
 
+class _DebugStamp extends StatelessWidget {
+  const _DebugStamp({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'BUILD: $text',
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF0F172A),
+        ),
+      ),
+    );
+  }
+}
+
 class _ErrorBanner extends StatelessWidget {
   const _ErrorBanner({required this.onRetry});
   final VoidCallback onRetry;
@@ -671,4 +701,3 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
->>>>>>> Incoming (Background Agent changes)

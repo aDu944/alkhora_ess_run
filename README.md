@@ -103,3 +103,16 @@ Recommended implementation is an ERPNext custom app (or Server Scripts) that:
 - Exposes a whitelisted API method for HR (or adds a report/dashboard) to export CSV/PDF.
 - Flags anomalies into a doctype (e.g., `Attendance Anomaly`) and/or sends notifications to HR.
 
+## Admin & reporting (backend) – recommended approach
+
+This repo currently contains the mobile app only. For:
+
+- **CSV/PDF export** (weekly/monthly hours worked)
+- **Anomaly detection** (overtime thresholds, outside-geofence punches)
+
+Recommended implementation is an ERPNext custom app (or Server Scripts) that:
+
+- Computes working hours by pairing `Employee Checkin` IN/OUT events per employee/day.
+- Exposes a whitelisted API method for HR (or adds a report/dashboard) to export CSV/PDF.
+- Flags anomalies into a doctype (e.g., `Attendance Anomaly`) and/or sends notifications to HR.
+
