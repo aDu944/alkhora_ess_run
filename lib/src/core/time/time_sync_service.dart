@@ -2,6 +2,11 @@ import '../storage/secure_kv.dart';
 
 class TimeSyncService {
   TimeSyncService._(this._offset, this._lastSync);
+  
+  /// Create a minimal time service with zero offset (device time only)
+  factory TimeSyncService.deviceTimeOnly() {
+    return TimeSyncService._(Duration.zero, null);
+  }
 
   Duration _offset;
   DateTime? _lastSync;

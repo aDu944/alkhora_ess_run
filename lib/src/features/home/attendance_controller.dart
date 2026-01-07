@@ -340,26 +340,28 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
       hasNet = false; // Assume offline on error
     }
 
+    // Get time service - use fallback to system time if provider not ready
     TimeSyncService timeSvc;
-    try {
-      // timeSyncServiceProvider is a FutureProvider, so we await its future
-      timeSvc = await ref.read(timeSyncServiceProvider.future);
-      try {
-        await timeSvc.sync();
-      } catch (e) {
-        // Keep last cached offset - sync failure is non-critical
-        debugPrint('Time sync failed (non-critical): $e');
-      }
-    } catch (e) {
-      // Fallback: create a minimal time service using system time
-      debugPrint('Time service provider failed, creating fallback: $e');
+    final timeSvcAsync = ref.read(timeSyncServiceProvider);
+    if (timeSvcAsync.hasValue && timeSvcAsync.value != null) {
+      timeSvc = timeSvcAsync.value!;
+    } else {
+      // Provider not loaded yet, create one directly
       try {
         timeSvc = await TimeSyncService.create();
-      } catch (e2) {
-        // Ultimate fallback: throw error if we can't even create time service
-        debugPrint('Failed to create time service fallback: $e2');
-        throw StateError('time_service_unavailable');
+      } catch (e) {
+        debugPrint('Failed to create time service: $e');
+        // Use system time as ultimate fallback - don't fail check-in for this
+        timeSvc = TimeSyncService.deviceTimeOnly();
       }
+    }
+    
+    // Try to sync time (non-blocking - if it fails, we use cached/device time)
+    try {
+      await timeSvc.sync();
+    } catch (e) {
+      // Keep last cached offset - sync failure is non-critical
+      debugPrint('Time sync failed (non-critical): $e');
     }
 
     final nowUtc = timeSvc.nowUtc();
