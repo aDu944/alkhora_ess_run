@@ -147,6 +147,16 @@ String _greeting(DateTime now) {
 }
 
 String _friendlyError(AppTexts t, String msg) {
+  // Handle error codes with prefixes (e.g., "api_error: ...", "checkin_failed: ...")
+  if (msg.startsWith('api_error: ')) {
+    final apiMsg = msg.substring('api_error: '.length);
+    return 'API Error: $apiMsg';
+  }
+  if (msg.startsWith('checkin_failed: ')) {
+    final failMsg = msg.substring('checkin_failed: '.length);
+    return 'Check-in failed: $failMsg';
+  }
+  
   switch (msg) {
     case 'location_permission_required':
       return t.locationPermissionRequired;
@@ -159,6 +169,8 @@ String _friendlyError(AppTexts t, String msg) {
       return 'Biometric verification failed.';
     case 'time_service_unavailable':
       return 'Unable to get system time. Please try again.';
+    case 'user_not_authenticated':
+      return 'User not authenticated. Please log in again.';
     default:
       // Include the actual error message for debugging
       if (msg != 'unknown' && !msg.startsWith('Unable to mark attendance')) {

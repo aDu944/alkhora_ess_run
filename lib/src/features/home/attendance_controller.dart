@@ -342,12 +342,8 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
 
     TimeSyncService timeSvc;
     try {
-      final timeSvcValue = ref.read(timeSyncServiceProvider);
-      if (timeSvcValue.hasValue) {
-        timeSvc = timeSvcValue.value!;
-      } else {
-        timeSvc = await timeSvcValue.future;
-      }
+      // timeSyncServiceProvider is a FutureProvider, so we await its future
+      timeSvc = await ref.read(timeSyncServiceProvider.future);
       try {
         await timeSvc.sync();
       } catch (e) {
@@ -361,6 +357,7 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
         timeSvc = await TimeSyncService.create();
       } catch (e2) {
         // Ultimate fallback: throw error if we can't even create time service
+        debugPrint('Failed to create time service fallback: $e2');
         throw StateError('time_service_unavailable');
       }
     }
