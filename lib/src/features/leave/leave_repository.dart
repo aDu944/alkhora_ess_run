@@ -153,3 +153,4 @@ class LeaveTypeRepository extends ERPNextRepository {
   }
 }
 
+

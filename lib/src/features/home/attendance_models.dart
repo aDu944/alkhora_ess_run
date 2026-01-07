@@ -24,3 +24,4 @@ class AttendanceAnalytics {
   final Duration weekGoal;
 }
 
+

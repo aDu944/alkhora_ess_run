@@ -143,3 +143,4 @@ def get_leave_balance(employee, leave_type, from_date=None):
 - Link fields use the `name` field of the linked doctype
 - Status fields may vary (check your ERPNext setup)
 
+

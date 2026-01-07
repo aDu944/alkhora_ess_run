@@ -91,8 +91,13 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
                         final next = s.nextLogType;
                         try {
                           await ref.read(attendanceControllerProvider.notifier).mark(logType: next);
-                        } catch (e) {
-                          final msg = (e is StateError && e.message is String) ? e.message as String : 'unknown';
+                        } catch (e, stackTrace) {
+                          String msg = 'unknown';
+                          if (e is StateError) {
+                            msg = e.message ?? 'unknown';
+                          } else {
+                            msg = e.toString();
+                          }
                           await _handleError(context, t, msg);
                         }
                       },

@@ -54,3 +54,4 @@ class HolidayListRepository extends ERPNextRepository {
 /// Note: Holidays are usually stored as child table of Holiday List
 /// You might need a custom API endpoint to fetch them efficiently
 
+

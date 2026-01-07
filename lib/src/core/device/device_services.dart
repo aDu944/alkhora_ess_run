@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -49,10 +51,19 @@ class DeviceServices {
   }
 
   static Future<Position> getPosition() async {
-    return Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-      timeLimit: const Duration(seconds: 15),
-    );
+    try {
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 15),
+      );
+    } on TimeoutException {
+      rethrow;
+    } on LocationServiceDisabledException {
+      rethrow;
+    } catch (e) {
+      // Wrap other exceptions
+      throw Exception('Failed to get location: $e');
+    }
   }
 }
 

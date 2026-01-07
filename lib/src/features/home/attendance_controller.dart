@@ -8,6 +8,7 @@ import '../../core/device/device_services.dart';
 import '../../core/network/providers.dart';
 import '../../core/offline/offline_queue.dart';
 import '../../core/time/providers.dart';
+import '../../core/time/time_sync_service.dart';
 import '../../features/auth/auth_controller.dart';
 import 'attendance_models.dart';
 import 'attendance_repository.dart';
@@ -296,13 +297,27 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
       throw StateError(latest.geofenceError ?? 'geofence_locked');
     }
 
-    final perm = await DeviceServices.ensureLocationPermission();
+    LocationPermission perm;
+    try {
+      perm = await DeviceServices.ensureLocationPermission();
+    } catch (e) {
+      state = AsyncValue.data(current.copyWith(pendingCount: await OfflineQueue.countAttendance()));
+      throw StateError('location_permission_required');
+    }
+    
     if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
       state = AsyncValue.data(current.copyWith(pendingCount: await OfflineQueue.countAttendance()));
       throw StateError('location_permission_required');
     }
 
-    final pos = await DeviceServices.getPosition();
+    Position pos;
+    try {
+      pos = await DeviceServices.getPosition();
+    } catch (e) {
+      state = AsyncValue.data(current.copyWith(pendingCount: await OfflineQueue.countAttendance()));
+      throw StateError('location_permission_required');
+    }
+    
     if (pos.isMocked) {
       throw StateError('mock_location_detected');
     }
@@ -317,13 +332,24 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
         throw StateError('geofence_locked');
       }
     }
-    final hasNet = await DeviceServices.hasNetwork();
-
-    final timeSvc = await ref.read(timeSyncServiceProvider.future);
+    bool hasNet;
     try {
-      await timeSvc.sync();
+      hasNet = await DeviceServices.hasNetwork();
     } catch (_) {
-      // Keep last cached offset
+      hasNet = false; // Assume offline on error
+    }
+
+    TimeSyncService timeSvc;
+    try {
+      timeSvc = await ref.read(timeSyncServiceProvider.future);
+      try {
+        await timeSvc.sync();
+      } catch (_) {
+        // Keep last cached offset
+      }
+    } catch (_) {
+      // Fallback: create a minimal time service using system time
+      timeSvc = await TimeSyncService.create();
     }
 
     final nowUtc = timeSvc.nowUtc();
@@ -343,24 +369,32 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
       return;
     }
 
-    final client = await ref.read(frappeClientProvider.future);
-    final repo = AttendanceRepository(client);
-    final user = ref.read(authControllerProvider).valueOrNull?.user;
-    if (user == null) {
-      state = AsyncValue.data(current);
-      return;
-    }
-    final emp = current.employeeId ?? await repo.getEmployeeIdForUser(user);
+    try {
+      final client = await ref.read(frappeClientProvider.future);
+      final repo = AttendanceRepository(client);
+      final user = ref.read(authControllerProvider).valueOrNull?.user;
+      if (user == null) {
+        state = AsyncValue.data(current);
+        return;
+      }
+      final emp = current.employeeId ?? await repo.getEmployeeIdForUser(user);
 
-    await repo.createCheckin(
-      employeeId: emp,
-      logType: logType,
-      time: nowUtc,
-      latitude: pos.latitude,
-      longitude: pos.longitude,
-      accuracy: pos.accuracy,
-    );
-    await _refresh(current.copyWith(employeeId: emp));
+      await repo.createCheckin(
+        employeeId: emp,
+        logType: logType,
+        time: nowUtc,
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+        accuracy: pos.accuracy,
+      );
+      await _refresh(current.copyWith(employeeId: emp));
+    } catch (e) {
+      // If online check-in fails, queue it for offline sync
+      await OfflineQueue.enqueueAttendance(action);
+      await _refresh(current);
+      // Re-throw to show error to user, but data is safely queued
+      rethrow;
+    }
   }
 }
 
