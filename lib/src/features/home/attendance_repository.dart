@@ -89,23 +89,52 @@ class AttendanceRepository {
     try {
       await _dio.post('/api/resource/Employee Checkin', data: payload);
     } on DioException catch (e) {
+      // Extract error message from response
+      String errorMsg = 'Unknown error';
+      if (e.response?.data != null) {
+        final data = e.response!.data;
+        if (data is Map) {
+          errorMsg = data['_error_message'] as String? ?? 
+                     data['exception'] as String? ??
+                     data['message'] as String? ??
+                     data.toString();
+        } else {
+          errorMsg = data.toString();
+        }
+      } else if (e.message != null) {
+        errorMsg = e.message!;
+      }
+      
       // Some ERPNext setups don't have location fields on Employee Checkin.
       // Retry with minimal standard fields.
-      final msg = e.response?.data?.toString() ?? '';
       final looksLikeFieldError =
-          msg.contains('Unknown') || msg.contains('unknown') || msg.contains('Field') || msg.contains('field');
+          errorMsg.contains('Unknown') || errorMsg.contains('unknown') || 
+          errorMsg.contains('Field') || errorMsg.contains('field');
       if (looksLikeFieldError && (payload.containsKey('latitude') || payload.containsKey('longitude'))) {
-        await _dio.post(
-          '/api/resource/Employee Checkin',
-          data: <String, dynamic>{
-            'employee': employeeId,
-            'log_type': logType,
-            'time': time.toIso8601String(),
-          },
-        );
-        return;
+        try {
+          await _dio.post(
+            '/api/resource/Employee Checkin',
+            data: <String, dynamic>{
+              'employee': employeeId,
+              'log_type': logType,
+              'time': time.toIso8601String(),
+            },
+          );
+          return;
+        } on DioException catch (e2) {
+          // If retry also fails, use the retry error
+          final retryMsg = e2.response?.data?['_error_message'] ?? e2.message ?? errorMsg;
+          throw StateError('api_error: $retryMsg');
+        }
       }
-      rethrow;
+      
+      // Convert DioException to StateError with readable message
+      throw StateError('api_error: $errorMsg');
+    } catch (e) {
+      // If it's already a StateError, rethrow it
+      if (e is StateError) rethrow;
+      // Otherwise wrap it
+      throw StateError('checkin_failed: ${e.toString()}');
     }
   }
 }

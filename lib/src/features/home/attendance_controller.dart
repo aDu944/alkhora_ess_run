@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -341,15 +342,27 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
 
     TimeSyncService timeSvc;
     try {
-      timeSvc = await ref.read(timeSyncServiceProvider.future);
+      final timeSvcValue = ref.read(timeSyncServiceProvider);
+      if (timeSvcValue.hasValue) {
+        timeSvc = timeSvcValue.value!;
+      } else {
+        timeSvc = await timeSvcValue.future;
+      }
       try {
         await timeSvc.sync();
-      } catch (_) {
-        // Keep last cached offset
+      } catch (e) {
+        // Keep last cached offset - sync failure is non-critical
+        debugPrint('Time sync failed (non-critical): $e');
       }
-    } catch (_) {
+    } catch (e) {
       // Fallback: create a minimal time service using system time
-      timeSvc = await TimeSyncService.create();
+      debugPrint('Time service provider failed, creating fallback: $e');
+      try {
+        timeSvc = await TimeSyncService.create();
+      } catch (e2) {
+        // Ultimate fallback: throw error if we can't even create time service
+        throw StateError('time_service_unavailable');
+      }
     }
 
     final nowUtc = timeSvc.nowUtc();
@@ -375,7 +388,7 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
       final user = ref.read(authControllerProvider).valueOrNull?.user;
       if (user == null) {
         state = AsyncValue.data(current);
-        return;
+        throw StateError('user_not_authenticated');
       }
       final emp = current.employeeId ?? await repo.getEmployeeIdForUser(user);
 
@@ -390,10 +403,21 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
       await _refresh(current.copyWith(employeeId: emp));
     } catch (e) {
       // If online check-in fails, queue it for offline sync
-      await OfflineQueue.enqueueAttendance(action);
-      await _refresh(current);
-      // Re-throw to show error to user, but data is safely queued
-      rethrow;
+      try {
+        await OfflineQueue.enqueueAttendance(action);
+        await _refresh(current);
+      } catch (_) {
+        // Even queuing failed, log it
+      }
+      
+      // Convert API errors to StateError with readable messages
+      if (e is StateError) {
+        rethrow;
+      } else {
+        // Extract error message from DioException or other exceptions
+        final errorMsg = e.toString();
+        throw StateError(errorMsg);
+      }
     }
   }
 }

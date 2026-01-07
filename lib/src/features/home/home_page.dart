@@ -95,9 +95,14 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
                           String msg = 'unknown';
                           if (e is StateError) {
                             msg = e.message ?? 'unknown';
+                          } else if (e is Exception) {
+                            msg = e.toString();
                           } else {
                             msg = e.toString();
                           }
+                          // Log the full error for debugging
+                          debugPrint('Check-in error: $e');
+                          debugPrint('Stack trace: $stackTrace');
                           await _handleError(context, t, msg);
                         }
                       },
@@ -152,7 +157,13 @@ String _friendlyError(AppTexts t, String msg) {
       return 'You must be within the office geofence.';
     case 'biometric_failed':
       return 'Biometric verification failed.';
+    case 'time_service_unavailable':
+      return 'Unable to get system time. Please try again.';
     default:
+      // Include the actual error message for debugging
+      if (msg != 'unknown' && !msg.startsWith('Unable to mark attendance')) {
+        return 'Unable to mark attendance: $msg';
+      }
       return 'Unable to mark attendance. Please try again.';
   }
 }
