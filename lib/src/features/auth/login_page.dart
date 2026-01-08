@@ -49,7 +49,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFAFAFA),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -70,11 +70,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF43A089),
+                        color: const Color(0xFF0B7A75),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF43A089).withOpacity(0.3),
+                            color: const Color(0xFF0B7A75).withOpacity(0.3),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -143,7 +143,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: const BorderSide(
-                            color: Color(0xFF43A089),
+                            color: Color(0xFF0B7A75),
                             width: 2,
                           ),
                         ),
@@ -214,7 +214,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: const BorderSide(
-                            color: Color(0xFF43A089),
+                            color: Color(0xFF0B7A75),
                             width: 2,
                           ),
                         ),
@@ -248,7 +248,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       child: ElevatedButton(
                         onPressed: auth.isLoading ? null : () => _handleLogin(auth),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF43A089),
+                          backgroundColor: const Color(0xFF0B7A75),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shadowColor: Colors.transparent,

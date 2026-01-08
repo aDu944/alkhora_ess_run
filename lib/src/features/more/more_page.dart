@@ -11,44 +11,56 @@ class MorePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.texts(ref);
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(t.settings)),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: Text(t.settings),
+        elevation: 0,
+      ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           children: [
-            _SectionTitle(title: t.settings),
-            Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.language_rounded),
-                    title: const Text('Language / اللغة'),
-                    subtitle: const Text('Auto • English • العربية'),
-                    onTap: () => _showLanguageSheet(context, ref),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.logout_rounded),
-                    title: Text(t.logout),
-                    onTap: () => ref.read(authControllerProvider.notifier).logout(),
-                  ),
-                ],
-              ),
+            // Settings Section
+            _SectionHeader(title: t.settings),
+            const SizedBox(height: 12),
+            _SettingsCard(
+              children: [
+                _FlatListTile(
+                  icon: Icons.language_rounded,
+                  iconColor: const Color(0xFF0B7A75),
+                  title: 'Language / اللغة',
+                  subtitle: 'Auto • English • العربية',
+                  onTap: () => _showLanguageSheet(context, ref),
+                ),
+                const _Divider(),
+                _FlatListTile(
+                  icon: Icons.logout_rounded,
+                  iconColor: const Color(0xFFEF4444),
+                  title: t.logout,
+                  subtitle: null,
+                  onTap: () => ref.read(authControllerProvider.notifier).logout(),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            _SectionTitle(title: 'Modules'),
-            _Grid(
+            const SizedBox(height: 32),
+
+            // Modules Section
+            _SectionHeader(title: 'Modules'),
+            const SizedBox(height: 12),
+            _ModulesGrid(
               items: [
-                _Item(label: t.leave, icon: Icons.beach_access_rounded, route: '/home/leave'),
-                _Item(label: t.attendance, icon: Icons.event_available_rounded, route: '/home/attendance'),
-                _Item(label: t.payslips, icon: Icons.receipt_long_rounded, route: '/home/payslips'),
-                _Item(label: t.expenses, icon: Icons.request_quote_rounded, route: '/home/expenses'),
-                _Item(label: t.announcements, icon: Icons.campaign_rounded, route: '/home/announcements'),
-                _Item(label: t.profile, icon: Icons.badge_rounded, route: '/home/profile'),
-                _Item(label: t.holidays, icon: Icons.calendar_month_rounded, route: '/home/holidays'),
-                _Item(label: t.documents, icon: Icons.description_rounded, route: '/home/documents'),
-                _Item(label: t.approvals, icon: Icons.fact_check_rounded, route: '/home/approvals'),
+                _ModuleItem(label: t.leave, icon: Icons.beach_access_rounded, route: '/home/leave'),
+                _ModuleItem(label: t.attendance, icon: Icons.event_available_rounded, route: '/home/attendance'),
+                _ModuleItem(label: t.payslips, icon: Icons.receipt_long_rounded, route: '/home/payslips'),
+                _ModuleItem(label: t.expenses, icon: Icons.request_quote_rounded, route: '/home/expenses'),
+                _ModuleItem(label: t.announcements, icon: Icons.campaign_rounded, route: '/home/announcements'),
+                _ModuleItem(label: t.profile, icon: Icons.badge_rounded, route: '/home/profile'),
+                _ModuleItem(label: t.holidays, icon: Icons.calendar_month_rounded, route: '/home/holidays'),
+                _ModuleItem(label: t.documents, icon: Icons.description_rounded, route: '/home/documents'),
+                _ModuleItem(label: t.approvals, icon: Icons.fact_check_rounded, route: '/home/approvals'),
               ],
             ),
           ],
@@ -60,38 +72,63 @@ class MorePage extends ConsumerWidget {
   void _showLanguageSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
-      showDragHandle: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.auto_awesome_rounded),
-                title: const Text('Auto'),
-                onTap: () {
-                  ref.read(appLocaleProvider.notifier).state = null;
-                  Navigator.of(ctx).pop();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.language_rounded),
-                title: const Text('English'),
-                onTap: () {
-                  ref.read(appLocaleProvider.notifier).state = const Locale('en');
-                  Navigator.of(ctx).pop();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.language_rounded),
-                title: const Text('العربية'),
-                onTap: () {
-                  ref.read(appLocaleProvider.notifier).state = const Locale('ar');
-                  Navigator.of(ctx).pop();
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E7EB),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text(
+                    'Select Language',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _LanguageOption(
+                  icon: Icons.auto_awesome_rounded,
+                  title: 'Auto',
+                  onTap: () {
+                    ref.read(appLocaleProvider.notifier).state = null;
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+                _LanguageOption(
+                  icon: Icons.language_rounded,
+                  title: 'English',
+                  onTap: () {
+                    ref.read(appLocaleProvider.notifier).state = const Locale('en');
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+                _LanguageOption(
+                  icon: Icons.language_rounded,
+                  title: 'العربية',
+                  onTap: () {
+                    ref.read(appLocaleProvider.notifier).state = const Locale('ar');
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         );
       },
@@ -99,32 +136,170 @@ class MorePage extends ConsumerWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title});
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title});
+
   final String title;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleMedium,
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF1F2937),
+          ),
+    );
+  }
+}
+
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(children: children),
+    );
+  }
+}
+
+class _FlatListTile extends StatelessWidget {
+  const _FlatListTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1F2937),
+                        ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: const Color(0xFF6B7280),
+                          ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFD1D5DB),
+              size: 24,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _Item {
-  _Item({required this.label, required this.icon, required this.route});
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: const Color(0xFFE5E7EB),
+      ),
+    );
+  }
+}
+
+class _LanguageOption extends StatelessWidget {
+  const _LanguageOption({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Icon(icon, color: const Color(0xFF0B7A75), size: 24),
+            const SizedBox(width: 16),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ModuleItem {
+  _ModuleItem({required this.label, required this.icon, required this.route});
   final String label;
   final IconData icon;
   final String route;
 }
 
-class _Grid extends StatelessWidget {
-  const _Grid({required this.items});
-  final List<_Item> items;
+class _ModulesGrid extends StatelessWidget {
+  const _ModulesGrid({required this.items});
+
+  final List<_ModuleItem> items;
 
   @override
   Widget build(BuildContext context) {
@@ -134,29 +309,46 @@ class _Grid extends StatelessWidget {
       itemCount: items.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.25,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        childAspectRatio: 1.1,
       ),
       itemBuilder: (context, i) {
         final it = items[i];
         return InkWell(
           onTap: () => context.push(it.route),
-          borderRadius: BorderRadius.circular(16),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(it.icon, size: 28),
-                  const Spacer(),
-                  Text(
-                    it.label,
-                    style: Theme.of(context).textTheme.titleMedium,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B7A75).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                ],
-              ),
+                  child: Icon(
+                    it.icon,
+                    size: 26,
+                    color: const Color(0xFF0B7A75),
+                  ),
+                ),
+                Text(
+                  it.label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1F2937),
+                      ),
+                ),
+              ],
             ),
           ),
         );
@@ -164,4 +356,3 @@ class _Grid extends StatelessWidget {
     );
   }
 }
-

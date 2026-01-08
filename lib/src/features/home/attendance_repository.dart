@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 
 import '../../core/network/frappe_client.dart';
@@ -89,15 +90,41 @@ class AttendanceRepository {
     try {
       await _dio.post('/api/resource/Employee Checkin', data: payload);
     } on DioException catch (e) {
+      // Log full error details for debugging
+      debugPrint('=== API ERROR ===');
+      debugPrint('Status Code: ${e.response?.statusCode}');
+      debugPrint('Response Data: ${e.response?.data}');
+      debugPrint('Error Message: ${e.message}');
+      
       // Extract error message from response
       String errorMsg = 'Unknown error';
       if (e.response?.data != null) {
         final data = e.response!.data;
         if (data is Map) {
+          // Try multiple error message fields
           errorMsg = data['_error_message'] as String? ?? 
                      data['exception'] as String? ??
                      data['message'] as String? ??
+                     data['exc'] as String? ??
+                     data['exc_type'] as String? ??
                      data.toString();
+          
+          // Clean up error message
+          if (errorMsg.contains('Traceback') || errorMsg.contains('File')) {
+            // Extract first meaningful line if it's a Python traceback
+            final lines = errorMsg.split('\n');
+            for (final line in lines) {
+              if (line.trim().isNotEmpty && 
+                  !line.contains('Traceback') && 
+                  !line.contains('File') &&
+                  !line.startsWith('  ')) {
+                errorMsg = line.trim();
+                break;
+              }
+            }
+          }
+        } else if (data is String) {
+          errorMsg = data;
         } else {
           errorMsg = data.toString();
         }
@@ -105,12 +132,25 @@ class AttendanceRepository {
         errorMsg = e.message!;
       }
       
+      // Handle specific HTTP status codes
+      if (e.response?.statusCode == 401) {
+        throw StateError('api_error: Session expired. Please log in again.');
+      } else if (e.response?.statusCode == 403) {
+        throw StateError('api_error: Permission denied. Contact administrator.');
+      } else if (e.response?.statusCode == 404) {
+        throw StateError('api_error: Employee Checkin endpoint not found.');
+      } else if (e.response?.statusCode == 500) {
+        throw StateError('api_error: Server error. Please try again later.');
+      }
+      
       // Some ERPNext setups don't have location fields on Employee Checkin.
       // Retry with minimal standard fields.
       final looksLikeFieldError =
           errorMsg.contains('Unknown') || errorMsg.contains('unknown') || 
-          errorMsg.contains('Field') || errorMsg.contains('field');
+          errorMsg.contains('Field') || errorMsg.contains('field') ||
+          errorMsg.contains('Invalid column');
       if (looksLikeFieldError && (payload.containsKey('latitude') || payload.containsKey('longitude'))) {
+        debugPrint('Retrying without location fields...');
         try {
           await _dio.post(
             '/api/resource/Employee Checkin',
@@ -120,10 +160,22 @@ class AttendanceRepository {
               'time': time.toIso8601String(),
             },
           );
+          debugPrint('Check-in successful without location fields');
           return;
         } on DioException catch (e2) {
+          debugPrint('Retry also failed: ${e2.response?.data}');
           // If retry also fails, use the retry error
-          final retryMsg = e2.response?.data?['_error_message'] ?? e2.message ?? errorMsg;
+          final retryData = e2.response?.data;
+          String retryMsg = errorMsg;
+          if (retryData is Map) {
+            retryMsg = retryData['_error_message'] as String? ?? 
+                       retryData['exception'] as String? ??
+                       retryData['message'] as String? ??
+                       e2.message ?? 
+                       errorMsg;
+          } else if (e2.message != null) {
+            retryMsg = e2.message!;
+          }
           throw StateError('api_error: $retryMsg');
         }
       }

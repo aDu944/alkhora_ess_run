@@ -229,14 +229,14 @@ class _Background extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFF4F7F9),
-            Color(0xFFFFFFFF),
-          ],
-        ),
+               gradient: LinearGradient(
+                 begin: Alignment.topCenter,
+                 end: Alignment.bottomCenter,
+                 colors: [
+                   Color(0xFFFAFAFA),
+                   Color(0xFFFFFFFF),
+                 ],
+               ),
       ),
       child: const SizedBox.expand(),
     );
@@ -364,7 +364,7 @@ class _MainActionSection extends StatelessWidget {
     final gradient = locked
         ? const LinearGradient(colors: [Color(0xFFCBD5E1), Color(0xFFE2E8F0)])
         : isIn
-            ? const LinearGradient(colors: [Color(0xFF43A089), Color(0xFF66BB6A)])
+            ? const LinearGradient(colors: [Color(0xFF0B7A75), Color(0xFF14A085)])
             : const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEF4444)]);
 
     String? helper;
@@ -451,8 +451,8 @@ class _PunchButton extends StatelessWidget {
               gradient: gradient,
               boxShadow: enabled
                   ? const [
-                      BoxShadow(color: Color(0x3343A089), blurRadius: 22, offset: Offset(0, 10)),
-                      BoxShadow(color: Color(0x2243A089), blurRadius: 46, offset: Offset(0, 20)),
+                      BoxShadow(color: Color(0x330B7A75), blurRadius: 22, offset: Offset(0, 10)),
+                      BoxShadow(color: Color(0x220B7A75), blurRadius: 46, offset: Offset(0, 20)),
                     ]
                   : const [
                       BoxShadow(color: Color(0x22000000), blurRadius: 18, offset: Offset(0, 10)),
@@ -504,7 +504,7 @@ class _RipplePainter extends CustomPainter {
       final p = (progress + i * 0.22) % 1.0;
       final radius = base + (size.shortestSide * 0.55) * p;
       final opacity = (1.0 - p).clamp(0.0, 1.0) * 0.18;
-      final paint = Paint()..color = const Color(0xFF43A089).withOpacity(opacity);
+      final paint = Paint()..color = const Color(0xFF0B7A75).withOpacity(opacity);
       canvas.drawCircle(center, radius, paint);
     }
   }
@@ -596,7 +596,7 @@ class _MetricCard extends StatelessWidget {
                 minHeight: 8,
                 value: progress.clamp(0, 1),
                 backgroundColor: const Color(0xFFEAEFF4),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF43A089)),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF0B7A75)),
               ),
             ),
           ],
