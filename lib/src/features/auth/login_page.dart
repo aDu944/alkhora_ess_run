@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/storage/secure_kv.dart';
 import '../../l10n/app_texts.dart';
 import 'auth_controller.dart';
+import 'language_selection_dialog.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -52,8 +53,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
 
-    ref.listen(authControllerProvider, (prev, next) {
+    ref.listen(authControllerProvider, (prev, next) async {
       next.whenOrNull(
+        data: (session) async {
+          if (session != null && mounted) {
+            // Check if this is first login (no language selected yet)
+            final isFirst = await ref.read(authControllerProvider.notifier).isFirstLogin();
+            if (isFirst) {
+              // Show language selection dialog
+              await showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const LanguageSelectionDialog(),
+              );
+            }
+          }
+        },
         error: (_, __) {
           if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -13,14 +13,21 @@ class App extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final locale = ref.watch(appLocaleProvider);
+    final isArabic = locale.languageCode == 'ar';
+    
+    // Apply Dubai font only for Arabic language
+    final theme = AppTheme.light();
+    final themeWithFont = isArabic
+        ? theme.copyWith(
+            textTheme: theme.textTheme.apply(
+              fontFamily: 'Dubai',
+            ),
+          )
+        : theme;
+    
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light().copyWith(
-        // Use Dubai font for Arabic
-        textTheme: AppTheme.light().textTheme.apply(
-          fontFamily: locale?.languageCode == 'ar' ? 'Dubai' : null,
-        ),
-      ),
+      theme: themeWithFont,
       locale: locale,
       supportedLocales: const [Locale('en'), Locale('ar')],
       localizationsDelegates: [

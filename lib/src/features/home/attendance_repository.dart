@@ -25,26 +25,135 @@ class AttendanceRepository {
   }
 
   Future<Map<String, dynamic>> getEmployeeForUser(String user, {bool preferEnglish = false}) async {
-    // Try to get English name field if available
-    final fields = preferEnglish 
-        ? '["name","employee_name","employee_name_in_english","first_name","last_name","user_id","branch","company","department"]'
-        : '["name","employee_name","employee_name_in_english","first_name","last_name","user_id","branch","company","department"]';
-    
-    final res = await _dio.get(
-      '/api/resource/Employee',
-      queryParameters: {
-        'fields': fields,
-        'filters': '[["user_id","=","$user"]]',
-        'limit_page_length': 1,
-      },
-    );
-    final data = (res.data is Map) ? (res.data['data'] as List?) : null;
-    final first = (data != null && data.isNotEmpty) ? data.first as Map : null;
-    final id = first?['name'] as String?;
-    if (id == null || id.isEmpty) {
-      throw StateError('No Employee linked to user_id=$user');
+    // First, get the employee ID using a simple query
+    try {
+      final res = await _dio.get(
+        '/api/resource/Employee',
+        queryParameters: {
+          'fields': '["name","employee_name","user_id"]',
+          'filters': '[["user_id","=","$user"]]',
+          'limit_page_length': 1,
+        },
+      );
+      final data = (res.data is Map) ? (res.data['data'] as List?) : null;
+      final first = (data != null && data.isNotEmpty) ? data.first as Map : null;
+      final id = first?['name'] as String?;
+      if (id == null || id.isEmpty) {
+        throw StateError('No Employee linked to user_id=$user');
+      }
+      
+      debugPrint('=== Employee Fetch ===');
+      debugPrint('Employee ID: $id');
+      debugPrint('preferEnglish: $preferEnglish');
+      
+      // If English is preferred, try multiple approaches to get English translation
+      if (preferEnglish) {
+        try {
+          debugPrint('Fetching full Employee record for translations...');
+          final fullRes = await _dio.get('/api/resource/Employee/$id');
+          final fullData = fullRes.data is Map ? fullRes.data['data'] : null;
+          if (fullData is Map) {
+            debugPrint('=== Full Employee Record ===');
+            debugPrint('All fields: ${fullData.keys.toList()}');
+            debugPrint('employee_name: ${fullData['employee_name']}');
+            
+            // Check all keys for any English-related translation fields
+            final allKeys = fullData.keys.toList();
+            String? englishName;
+            for (final key in allKeys) {
+              final keyStr = key.toString().toLowerCase();
+              if (keyStr.contains('english') || 
+                  (keyStr.contains('name') && keyStr.contains('en')) ||
+                  keyStr == 'employee_name_english' ||
+                  keyStr == 'employee_name_in_english') {
+                final value = fullData[key];
+                debugPrint('Found potential English field $key: $value');
+                if (value != null && value.toString().trim().isNotEmpty) {
+                  englishName = value.toString();
+                }
+              }
+            }
+            
+            // Try to get translation from Translation doctype if field not found
+            if (englishName == null || englishName.isEmpty) {
+              try {
+                debugPrint('Trying Translation doctype API...');
+                final arabicName = fullData['employee_name'] as String?;
+                if (arabicName != null && arabicName.isNotEmpty) {
+                  // Try multiple filter combinations for Translation doctype
+                  try {
+                    final translationRes = await _dio.get(
+                      '/api/resource/Translation',
+                      queryParameters: {
+                        'fields': '["translated_text","source_text"]',
+                        'filters': jsonEncode([
+                          ['source_text', '=', arabicName],
+                          ['language', '=', 'en'],
+                          ['contributed', '=', 0], // System translations only
+                        ]),
+                        'limit_page_length': 10,
+                      },
+                    );
+                    final translationData = (translationRes.data is Map) ? (translationRes.data['data'] as List?) : null;
+                    if (translationData != null && translationData.isNotEmpty) {
+                      // Find the translation that matches our employee name
+                      for (final translation in translationData) {
+                        if (translation is Map) {
+                          final sourceText = translation['source_text'] as String?;
+                          if (sourceText == arabicName) {
+                            englishName = translation['translated_text'] as String?;
+                            debugPrint('Found translation from Translation doctype: $englishName');
+                            break;
+                          }
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint('Translation doctype query failed: $e');
+                  }
+                }
+              } catch (e) {
+                debugPrint('Translation fetch error: $e');
+              }
+            }
+            
+            // If we found English name, add it to the data
+            if (englishName != null && englishName.isNotEmpty) {
+              fullData['employee_name_english'] = englishName;
+              debugPrint('Set employee_name_english to: $englishName');
+            }
+            
+            // Return full data which includes all fields and translations
+            return Map<String, dynamic>.from(fullData);
+          }
+        } catch (e) {
+          debugPrint('Full record fetch failed, using list query: $e');
+          // Fall through to use basic query result
+        }
+      }
+      
+      // For Arabic or if full record fetch failed, fetch additional fields we need
+      final detailedRes = await _dio.get(
+        '/api/resource/Employee',
+        queryParameters: {
+          'fields': '["name","employee_name","user_id","branch","company","department"]',
+          'filters': '[["user_id","=","$user"]]',
+          'limit_page_length': 1,
+        },
+      );
+      final detailedData = (detailedRes.data is Map) ? (detailedRes.data['data'] as List?) : null;
+      final detailedFirst = (detailedData != null && detailedData.isNotEmpty) ? detailedData.first as Map : null;
+      
+      if (detailedFirst != null) {
+        debugPrint('Using list query result: employee_name = ${detailedFirst['employee_name']}');
+        return Map<String, dynamic>.from(detailedFirst);
+      }
+      
+      return Map<String, dynamic>.from(first!);
+    } catch (e) {
+      debugPrint('Error fetching employee: $e');
+      rethrow;
     }
-    return Map<String, dynamic>.from(first!);
   }
 
   /// Get allowed check-in locations for an employee

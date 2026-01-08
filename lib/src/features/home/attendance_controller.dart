@@ -157,18 +157,61 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
     }
     final repo = AttendanceRepository(client);
     // Check if app language is English to prefer English name
+    // Only prefer English if explicitly selected (not based on system locale)
     final locale = ref.read(appLocaleProvider);
-    final preferEnglish = locale?.languageCode == 'en';
+    final preferEnglish = locale.languageCode == 'en';
+    
+    debugPrint('=== Language Detection ===');
+    debugPrint('appLocaleProvider value: $locale');
+    debugPrint('appLocaleProvider languageCode: ${locale.languageCode}');
+    debugPrint('preferEnglish: $preferEnglish');
     final empRow = await repo.getEmployeeForUser(user, preferEnglish: preferEnglish);
     final emp = empRow['name'] as String;
     
     // Prefer English name if available and app language is English
+    // In ERPNext, translated fields might use different naming conventions
     String? empName;
     if (preferEnglish) {
-      empName = empRow['employee_name_in_english'] as String? ??
-                empRow['first_name'] as String? ??
-                empRow['employee_name'] as String?;
+      // Debug: Log what fields are available
+      debugPrint('=== Employee Name Selection ===');
+      debugPrint('Employee data keys: ${empRow.keys.toList()}');
+      debugPrint('employee_name: ${empRow['employee_name']}');
+      debugPrint('preferEnglish: $preferEnglish');
+      
+      // Try multiple possible field names for English translation
+      // ERPNext might use: employee_name_english, employee_name_in_english
+      empName = empRow['employee_name_english'] as String?;
+      if (empName == null || empName.toString().trim().isEmpty) {
+        empName = empRow['employee_name_in_english'] as String?;
+      }
+      // Check all keys for any English-related field (in case field name varies)
+      if (empName == null || empName.toString().trim().isEmpty) {
+        final allKeys = empRow.keys.toList();
+        final englishKeys = allKeys.where((k) => 
+          k.toString().toLowerCase().contains('english') || 
+          k.toString().toLowerCase().contains('_en') ||
+          (k.toString().toLowerCase().startsWith('name') && k.toString().toLowerCase() != 'name' && k.toString().toLowerCase() != 'employee_name')
+        ).toList();
+        debugPrint('Found potential English keys: $englishKeys');
+        for (final key in englishKeys) {
+          final value = empRow[key] as String?;
+          if (value != null && value.toString().trim().isNotEmpty) {
+            debugPrint('Trying key $key: $value');
+            // Check if value looks like English (has Latin characters)
+            if (RegExp(r'[a-zA-Z]').hasMatch(value)) {
+              empName = value;
+              debugPrint('Using $key: $value');
+              break;
+            }
+          }
+        }
+      }
+      // Fallback to original employee_name if translation not available
+      empName ??= empRow['employee_name'] as String?;
+      debugPrint('Final selected name: $empName');
+      debugPrint('===============================');
     } else {
+      // Use the employee_name field (will be in the default language, usually Arabic)
       empName = empRow['employee_name'] as String?;
     }
     final last = await repo.getLastCheckin(emp);

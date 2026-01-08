@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/auth_controller.dart';
+import '../../features/home/attendance_controller.dart';
+import '../../features/profile/profile_page.dart';
 import '../../l10n/app_texts.dart';
 
 class MorePage extends ConsumerWidget {
@@ -25,14 +27,14 @@ class MorePage extends ConsumerWidget {
           children: [
             // Settings Section
             _SectionHeader(title: t.settings),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             _SettingsCard(
               children: [
                 _FlatListTile(
                   icon: Icons.language_rounded,
                   iconColor: const Color(0xFF1C4CA5),
                   title: t.language,
-                  subtitle: '${t.languageAuto} • ${t.languageEnglish} • ${t.languageArabic}',
+                  subtitle: _getCurrentLanguageDisplay(ref, t),
                   onTap: () => _showLanguageSheet(context, ref),
                 ),
                 const _Divider(),
@@ -49,7 +51,7 @@ class MorePage extends ConsumerWidget {
 
             // Modules Section
             _SectionHeader(title: t.modules),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             _ModulesGrid(
               items: [
                 _ModuleItem(label: t.leave, icon: Icons.beach_access_rounded, route: '/home/leave'),
@@ -105,27 +107,23 @@ class MorePage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 _LanguageOption(
-                  icon: Icons.auto_awesome_rounded,
-                  title: t.languageAuto,
-                  onTap: () {
-                    ref.read(appLocaleProvider.notifier).state = null;
-                    Navigator.of(ctx).pop();
-                  },
-                ),
-                _LanguageOption(
                   icon: Icons.language_rounded,
                   title: t.languageEnglish,
+                  isSelected: ref.read(appLocaleProvider).languageCode == 'en',
                   onTap: () {
-                    ref.read(appLocaleProvider.notifier).state = const Locale('en');
+                    ref.read(appLocaleProvider.notifier).setLocale(const Locale('en'));
                     Navigator.of(ctx).pop();
+                    _performSoftRestart(ref);
                   },
                 ),
                 _LanguageOption(
                   icon: Icons.language_rounded,
                   title: t.languageArabic,
+                  isSelected: ref.read(appLocaleProvider).languageCode == 'ar',
                   onTap: () {
-                    ref.read(appLocaleProvider.notifier).state = const Locale('ar');
+                    ref.read(appLocaleProvider.notifier).setLocale(const Locale('ar'));
                     Navigator.of(ctx).pop();
+                    _performSoftRestart(ref);
                   },
                 ),
                 const SizedBox(height: 20),
@@ -135,6 +133,25 @@ class MorePage extends ConsumerWidget {
         );
       },
     );
+  }
+
+  String _getCurrentLanguageDisplay(WidgetRef ref, AppTexts t) {
+    final locale = ref.read(appLocaleProvider);
+    if (locale.languageCode == 'en') return t.languageEnglish;
+    if (locale.languageCode == 'ar') return t.languageArabic;
+    return t.languageEnglish; // Default to English
+  }
+
+  void _performSoftRestart(WidgetRef ref) {
+    // Invalidate all providers that depend on locale to trigger a soft restart
+    Future.microtask(() {
+      // Refresh attendance controller (contains employee name)
+      ref.invalidate(attendanceControllerProvider);
+      // Refresh profile provider (contains employee name)
+      ref.invalidate(employeeProfileProvider);
+      // Note: The app itself will rebuild when appLocaleProvider changes
+      // due to MaterialApp.router watching appLocaleProvider
+    });
   }
 }
 
@@ -166,6 +183,13 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(children: children),
     );
@@ -262,28 +286,44 @@ class _LanguageOption extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.onTap,
+    this.isSelected = false,
   });
 
   final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Padding(
+      child: Container(
+        color: isSelected ? const Color(0xFF1C4CA5).withOpacity(0.05) : null,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF1C4CA5), size: 24),
-            const SizedBox(width: 16),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFF1C4CA5) : const Color(0xFF6B7280),
+              size: 24,
             ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color: isSelected ? const Color(0xFF1C4CA5) : const Color(0xFF1F2937),
+                    ),
+              ),
+            ),
+            if (isSelected)
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF1C4CA5),
+                size: 24,
+              ),
           ],
         ),
       ),
@@ -317,43 +357,52 @@ class _ModulesGrid extends StatelessWidget {
       ),
       itemBuilder: (context, i) {
         final it = items[i];
-        return InkWell(
-          onTap: () => context.push(it.route),
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
+            return InkWell(
+              onTap: () => context.push(it.route),
               borderRadius: BorderRadius.circular(20),
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1C4CA5).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    it.icon,
-                    size: 26,
-                    color: const Color(0xFF1C4CA5),
-                  ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                Text(
-                  it.label,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1F2937),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1C4CA5).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
+                      child: Icon(
+                        it.icon,
+                        size: 28,
+                        color: const Color(0xFF1C4CA5),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      it.label,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A),
+                            fontSize: 15,
+                          ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
+              ),
+            );
       },
     );
   }

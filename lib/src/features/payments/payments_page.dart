@@ -427,7 +427,7 @@ class PaymentsPage extends ConsumerWidget {
     final filters = ref.read(paymentFiltersProvider);
     DateTime? fromDate = filters.fromDate;
     DateTime? toDate = filters.toDate;
-    String? paymentType = filters.paymentType ?? t.all;
+    String? paymentType = filters.paymentType ?? 'All';
     final fromAmountController = TextEditingController(
       text: filters.minAmount?.toStringAsFixed(0) ?? '',
     );

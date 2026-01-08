@@ -23,5 +23,7 @@ class SecureKeys {
   static const ntpLastSyncIso = 'ntpLastSyncIso';
   static const rememberedUsername = 'rememberedUsername';
   static const rememberMeEnabled = 'rememberMeEnabled';
+  static const selectedLanguage = 'selectedLanguage'; // 'en' or 'ar'
+  static const hasSelectedLanguage = 'hasSelectedLanguage'; // '1' if user has selected language
 }
 

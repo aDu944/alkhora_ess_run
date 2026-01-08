@@ -1,7 +1,36 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final appLocaleProvider = StateProvider<Locale?>((ref) => null);
+import '../core/storage/secure_kv.dart';
+
+// Load locale from secure storage on initialization
+final appLocaleProvider = StateNotifierProvider<LocaleNotifier, Locale>((ref) {
+  return LocaleNotifier();
+});
+
+class LocaleNotifier extends StateNotifier<Locale> {
+  LocaleNotifier() : super(const Locale('en')) {
+    _loadLocale();
+  }
+
+  Future<void> _loadLocale() async {
+    final lang = await SecureKv.read(SecureKeys.selectedLanguage);
+    if (lang != null && (lang == 'en' || lang == 'ar')) {
+      state = Locale(lang);
+    }
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    state = locale;
+    await SecureKv.write(SecureKeys.selectedLanguage, locale.languageCode);
+    await SecureKv.write(SecureKeys.hasSelectedLanguage, '1');
+  }
+
+  Future<bool> hasSelectedLanguage() async {
+    final hasSelected = await SecureKv.read(SecureKeys.hasSelectedLanguage);
+    return hasSelected == '1';
+  }
+}
 
 class AppTexts {
   AppTexts(this.locale);
@@ -94,10 +123,11 @@ class AppTexts {
 
   // Settings page
   String get language => isAr ? 'اللغة' : 'Language';
-  String get languageAuto => isAr ? 'تلقائي' : 'Auto';
   String get languageEnglish => isAr ? 'الإنجليزية' : 'English';
-  String get languageArabic => isAr ? 'العربية' : 'العربية';
+  String get languageArabic => isAr ? 'العربية' : 'Arabic';
   String get selectLanguage => isAr ? 'اختر اللغة' : 'Select Language';
+  String get selectPreferredLanguage => isAr ? 'اختر لغتك المفضلة' : 'Select Your Preferred Language';
+  String get continueText => isAr ? 'متابعة' : 'Continue';
   String get modules => isAr ? 'الوحدات' : 'Modules';
   String get rememberMe => isAr ? 'تذكرني' : 'Remember me';
 
@@ -127,6 +157,21 @@ class AppTexts {
   String get apply => isAr ? 'تطبيق' : 'Apply';
   String get clearAll => isAr ? 'مسح الكل' : 'Clear All';
   String get ofPayments => isAr ? 'من المدفوعات' : 'of payments';
+
+  // Profile page
+  String get personalInformation => isAr ? 'المعلومات الشخصية' : 'Personal Information';
+  String get employeeId => isAr ? 'رقم الموظف' : 'Employee ID';
+  String get department => isAr ? 'القسم' : 'Department';
+  String get company => isAr ? 'الشركة' : 'Company';
+  String get dateOfJoining => isAr ? 'تاريخ التعيين' : 'Date of Joining';
+  String get contactInformation => isAr ? 'معلومات الاتصال' : 'Contact Information';
+  String get phone => isAr ? 'الهاتف' : 'Phone';
+  String get email => isAr ? 'البريد الإلكتروني' : 'Email';
+  String get emergencyContact => isAr ? 'جهة الاتصال في حالات الطوارئ' : 'Emergency Contact';
+  String get address => isAr ? 'العنوان' : 'Address';
+  String get currentAddress => isAr ? 'العنوان الحالي' : 'Current Address';
+  String get permanentAddress => isAr ? 'العنوان الدائم' : 'Permanent Address';
+  String get errorLoadingProfile => isAr ? 'خطأ في تحميل الملف الشخصي' : 'Error loading profile';
 }
 
 extension AppTextsX on BuildContext {

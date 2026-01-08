@@ -14,6 +14,7 @@ import '../../features/auth/auth_controller.dart';
 import '../../l10n/app_texts.dart';
 import 'attendance_controller.dart';
 import 'attendance_models.dart';
+import 'location_map_widget.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -111,6 +112,8 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
                   const SizedBox(height: 16),
                   _AnalyticsRow(analytics: att.valueOrNull?.analytics),
                   const SizedBox(height: 16),
+                  const LocationMapWidget(),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: _RecentActivitySheet(
                       now: now,
@@ -281,31 +284,43 @@ class _HeaderRow extends StatelessWidget {
             children: [
               Text(
                 '$greeting,',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF111827),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1F2937),
+                  fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                          ),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF0F172A),
+                  fontSize: 20,
+                ),
+              ),
                         ],
                       ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFF111827).withOpacity(0.06),
+            color: const Color(0xFF1C4CA5).withOpacity(0.1),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFF111827).withOpacity(0.06)),
+            border: Border.all(
+              color: const Color(0xFF1C4CA5).withOpacity(0.2),
+              width: 1,
+            ),
           ),
           child: Text(
             statusText,
-            style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF4B5563)),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: const Color(0xFF1C4CA5),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
           ),
         ),
       ],
@@ -330,15 +345,19 @@ class _HeroClock extends StatelessWidget {
           time,
           style: theme.textTheme.displaySmall?.copyWith(
             fontWeight: FontWeight.w800,
-            fontSize: 32,
-            letterSpacing: 0.6,
+            fontSize: 48,
+            letterSpacing: 1.2,
             color: const Color(0xFF0F172A),
+            height: 1.1,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           date,
-          style: theme.textTheme.bodyMedium?.copyWith(color: const Color(0xFF64748B)),
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: const Color(0xFF475569),
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -471,11 +490,11 @@ class _PunchButton extends StatelessWidget {
               gradient: gradient,
               boxShadow: enabled
                   ? const [
-                      BoxShadow(color: Color(0x330B7A75), blurRadius: 22, offset: Offset(0, 10)),
-                      BoxShadow(color: Color(0x220B7A75), blurRadius: 46, offset: Offset(0, 20)),
+                      BoxShadow(color: Color(0x401C4CA5), blurRadius: 24, offset: Offset(0, 12)),
+                      BoxShadow(color: Color(0x301C4CA5), blurRadius: 48, offset: Offset(0, 24)),
                     ]
                   : const [
-                      BoxShadow(color: Color(0x22000000), blurRadius: 18, offset: Offset(0, 10)),
+                      BoxShadow(color: Color(0x20000000), blurRadius: 18, offset: Offset(0, 10)),
                     ],
             ),
             child: ElevatedButton(
@@ -609,25 +628,44 @@ class _MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      elevation: 0,
-      color: Colors.white.withOpacity(0.95),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 2,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: const Color(0xFFE5E7EB), width: 1),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.bodyMedium?.copyWith(color: const Color(0xFF64748B))),
+            Text(
+              title,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(value, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 10),
+            Text(
+              value,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF0F172A),
+                fontSize: 20,
+              ),
+            ),
+            const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: LinearProgressIndicator(
-                minHeight: 8,
+                minHeight: 10,
                 value: progress.clamp(0, 1),
-                backgroundColor: const Color(0xFFEAEFF4),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF1C4CA5)),
+                backgroundColor: const Color(0xFFF1F5F9),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  progress >= 1.0 ? const Color(0xFF10B981) : const Color(0xFF1C4CA5),
+                ),
               ),
             ),
           ],
@@ -678,32 +716,83 @@ class _RecentActivitySheet extends ConsumerWidget {
     }
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(t.recentActivity, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
+            Text(
+              t.recentActivity,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 12),
             Expanded(
               child: ListView(
+                shrinkWrap: false,
                 children: [
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(t.today, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800)),
-                    subtitle: Text(formatEvent(todayEvent), style: theme.textTheme.bodyMedium),
-                    leading: const Icon(Icons.history_rounded, color: Color(0xFF64748B)),
+                    title: Text(
+                      t.today,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    subtitle: Text(
+                      formatEvent(todayEvent),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1C4CA5).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.history_rounded, color: Color(0xFF1C4CA5), size: 20),
+                    ),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(t.yesterday, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
-                    subtitle: Text(formatEvent(yesterdayEvent), style: theme.textTheme.bodyMedium),
-                    leading: const Icon(Icons.history_rounded, color: Color(0xFF64748B)),
+                    title: Text(
+                      t.yesterday,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    subtitle: Text(
+                      formatEvent(yesterdayEvent),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6B7280).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.history_rounded, color: Color(0xFF6B7280), size: 20),
+                    ),
                     trailing: OutlinedButton(
                       onPressed: () {},
                       style: OutlinedButton.styleFrom(
@@ -765,15 +854,29 @@ class _RecentActivitySheet extends ConsumerWidget {
                             ),
                             subtitle: Text(
                               DateFormat('EEE, MMM d • HH:mm').format(e.time.toLocal()),
-                              style: theme.textTheme.bodyMedium,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: const Color(0xFF475569),
+                              ),
                             ),
-                            leading: Icon(
-                              e.logType == 'IN' ? Icons.login_rounded : Icons.logout_rounded,
-                              color: (e.isLateEntry && e.logType == 'IN') 
-                                  ? Colors.orange 
-                                  : (e.isEarlyExit && e.logType == 'OUT')
-                                      ? Colors.red
-                                      : const Color(0xFF64748B),
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: (e.isLateEntry && e.logType == 'IN') 
+                                    ? Colors.orange.withOpacity(0.1)
+                                    : (e.isEarlyExit && e.logType == 'OUT')
+                                        ? Colors.red.withOpacity(0.1)
+                                        : const Color(0xFF64748B).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                e.logType == 'IN' ? Icons.login_rounded : Icons.logout_rounded,
+                                color: (e.isLateEntry && e.logType == 'IN') 
+                                    ? Colors.orange 
+                                    : (e.isEarlyExit && e.logType == 'OUT')
+                                        ? Colors.red
+                                        : const Color(0xFF64748B),
+                                size: 20,
+                              ),
                             ),
                           ),
                         ),

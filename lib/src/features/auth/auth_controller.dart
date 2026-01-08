@@ -48,6 +48,12 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     }
   }
 
+  // Check if this is first login (no language selected yet)
+  Future<bool> isFirstLogin() async {
+    final hasSelected = await SecureKv.read(SecureKeys.hasSelectedLanguage);
+    return hasSelected != '1';
+  }
+
   Future<void> logout() async {
     final client = await ref.read(frappeClientProvider.future);
     await client.logout();
