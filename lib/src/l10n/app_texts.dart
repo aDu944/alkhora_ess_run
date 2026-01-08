@@ -125,7 +125,6 @@ class AppTexts {
   String get min => isAr ? 'الحد الأدنى' : 'Min';
   String get max => isAr ? 'الحد الأقصى' : 'Max';
   String get apply => isAr ? 'تطبيق' : 'Apply';
-  String get cancel => isAr ? 'إلغاء' : 'Cancel';
   String get clearAll => isAr ? 'مسح الكل' : 'Clear All';
   String get ofPayments => isAr ? 'من المدفوعات' : 'of payments';
 }
