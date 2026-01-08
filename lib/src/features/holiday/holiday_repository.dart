@@ -48,6 +48,47 @@ class HolidayListRepository extends ERPNextRepository {
     // This is a simplified version
     return lists;
   }
+
+  /// Get holidays for an employee (from their assigned holiday list)
+  Future<List<Map<String, dynamic>>> getEmployeeHolidays(String employeeId) async {
+    try {
+      // First, get employee's holiday list
+      final empRes = await dio.get(
+        '/api/resource/Employee/$employeeId',
+        queryParameters: {'fields': '["holiday_list"]'},
+      );
+      final empData = empRes.data is Map ? empRes.data['data'] : null;
+      final holidayListName = empData is Map ? empData['holiday_list'] as String? : null;
+
+      if (holidayListName == null || holidayListName.isEmpty) {
+        return [];
+      }
+
+      // Try to fetch holidays from Holiday doctype (if accessible)
+      try {
+        final holidayRes = await dio.get(
+          '/api/resource/Holiday',
+          queryParameters: {
+            'fields': '["holiday_date","description","weekly_off"]',
+            'filters': '[["parent","=","$holidayListName"]]',
+            'order_by': 'holiday_date asc',
+          },
+        );
+        final holidayData = holidayRes.data is Map ? holidayRes.data['data'] : null;
+        if (holidayData is List && holidayData.isNotEmpty) {
+          return holidayData.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      } catch (_) {
+        // Holiday doctype might not be accessible, try alternative
+      }
+
+      // Fallback: return holiday list info
+      final holidayList = await get(holidayListName);
+      return [holidayList];
+    } catch (e) {
+      return [];
+    }
+  }
 }
 
 /// For fetching holiday dates from Holiday doctype if needed

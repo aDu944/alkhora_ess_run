@@ -44,3 +44,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
+  fonts:
+    - family: Dubai
+      fonts:
+        - asset: fonts/Dubai-Regular.ttf
+        - asset: fonts/Dubai-Bold.ttf
+          weight: 700

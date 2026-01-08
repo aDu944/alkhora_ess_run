@@ -94,23 +94,37 @@ class _PayslipCard extends StatelessWidget {
             Text('Status: $status'),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (netPay != null)
-              Text(
-                '${NumberFormat.currency(symbol: '').format(netPay)}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+        trailing: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 120),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (netPay != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    NumberFormat.currency(symbol: '').format(netPay),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              TextButton(
+                onPressed: () => _downloadPayslip(context, name),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('View', style: TextStyle(fontSize: 12)),
               ),
-            TextButton(
-              onPressed: () => _downloadPayslip(context, name),
-              child: const Text('View'),
-            ),
-          ],
+            ],
+          ),
         ),
         isThreeLine: true,
       ),

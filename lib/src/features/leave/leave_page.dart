@@ -6,7 +6,8 @@ import 'package:intl/intl.dart';
 import '../../core/network/employee_provider.dart';
 import '../../core/network/providers.dart';
 import '../../l10n/app_texts.dart';
-import 'leave_repository.dart';
+import 'leave_repository.dart' show LeaveRepository, LeaveAllocationRepository;
+import 'leave_apply_form.dart';
 
 final leaveApplicationsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final client = await ref.watch(frappeClientProvider.future);
@@ -112,20 +113,18 @@ class LeavePage extends ConsumerWidget {
   }
 
   void _showApplyLeaveDialog(BuildContext context, WidgetRef ref) {
-    // Placeholder for apply leave dialog
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Apply for Leave'),
-        content: const Text('Leave application form will be implemented here.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const LeaveApplyForm(),
+        fullscreenDialog: true,
       ),
-    );
+    ).then((submitted) {
+      if (submitted == true) {
+        // Refresh providers when form is submitted
+        ref.invalidate(leaveApplicationsProvider);
+        ref.invalidate(leaveBalancesProvider);
+      }
+    });
   }
 }
 

@@ -30,9 +30,9 @@ class MorePage extends ConsumerWidget {
               children: [
                 _FlatListTile(
                   icon: Icons.language_rounded,
-                  iconColor: const Color(0xFF0B7A75),
-                  title: 'Language / اللغة',
-                  subtitle: 'Auto • English • العربية',
+                  iconColor: const Color(0xFF1C4CA5),
+                  title: t.language,
+                  subtitle: '${t.languageAuto} • ${t.languageEnglish} • ${t.languageArabic}',
                   onTap: () => _showLanguageSheet(context, ref),
                 ),
                 const _Divider(),
@@ -48,7 +48,7 @@ class MorePage extends ConsumerWidget {
             const SizedBox(height: 32),
 
             // Modules Section
-            _SectionHeader(title: 'Modules'),
+            _SectionHeader(title: t.modules),
             const SizedBox(height: 12),
             _ModulesGrid(
               items: [
@@ -56,6 +56,7 @@ class MorePage extends ConsumerWidget {
                 _ModuleItem(label: t.attendance, icon: Icons.event_available_rounded, route: '/home/attendance'),
                 _ModuleItem(label: t.payslips, icon: Icons.receipt_long_rounded, route: '/home/payslips'),
                 _ModuleItem(label: t.expenses, icon: Icons.request_quote_rounded, route: '/home/expenses'),
+                _ModuleItem(label: 'Payments', icon: Icons.payment_rounded, route: '/home/payments'),
                 _ModuleItem(label: t.announcements, icon: Icons.campaign_rounded, route: '/home/announcements'),
                 _ModuleItem(label: t.profile, icon: Icons.badge_rounded, route: '/home/profile'),
                 _ModuleItem(label: t.holidays, icon: Icons.calendar_month_rounded, route: '/home/holidays'),
@@ -70,6 +71,7 @@ class MorePage extends ConsumerWidget {
   }
 
   void _showLanguageSheet(BuildContext context, WidgetRef ref) {
+    final t = context.texts(ref);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -95,7 +97,7 @@ class MorePage extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: Text(
-                    'Select Language',
+                    t.selectLanguage,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -104,7 +106,7 @@ class MorePage extends ConsumerWidget {
                 const SizedBox(height: 8),
                 _LanguageOption(
                   icon: Icons.auto_awesome_rounded,
-                  title: 'Auto',
+                  title: t.languageAuto,
                   onTap: () {
                     ref.read(appLocaleProvider.notifier).state = null;
                     Navigator.of(ctx).pop();
@@ -112,7 +114,7 @@ class MorePage extends ConsumerWidget {
                 ),
                 _LanguageOption(
                   icon: Icons.language_rounded,
-                  title: 'English',
+                  title: t.languageEnglish,
                   onTap: () {
                     ref.read(appLocaleProvider.notifier).state = const Locale('en');
                     Navigator.of(ctx).pop();
@@ -120,7 +122,7 @@ class MorePage extends ConsumerWidget {
                 ),
                 _LanguageOption(
                   icon: Icons.language_rounded,
-                  title: 'العربية',
+                  title: t.languageArabic,
                   onTap: () {
                     ref.read(appLocaleProvider.notifier).state = const Locale('ar');
                     Navigator.of(ctx).pop();
@@ -274,7 +276,7 @@ class _LanguageOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF0B7A75), size: 24),
+            Icon(icon, color: const Color(0xFF1C4CA5), size: 24),
             const SizedBox(width: 16),
             Text(
               title,
@@ -332,13 +334,13 @@ class _ModulesGrid extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0B7A75).withOpacity(0.1),
+                    color: const Color(0xFF1C4CA5).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
                     it.icon,
                     size: 26,
-                    color: const Color(0xFF0B7A75),
+                    color: const Color(0xFF1C4CA5),
                   ),
                 ),
                 Text(

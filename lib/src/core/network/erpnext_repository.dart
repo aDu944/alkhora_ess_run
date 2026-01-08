@@ -83,7 +83,7 @@ abstract class ERPNextRepository {
 
   /// Submit a record (if workflow is enabled)
   Future<Map<String, dynamic>> submit(String name) async {
-    final res = await dio.post('/api/resource/$doctype/$name', data: {'docstatus': 1});
+    final res = await dio.post('/api/resource/$doctype/$name/submit');
     final responseData = res.data is Map ? res.data['data'] : null;
     if (responseData == null) throw StateError('Failed to submit record: $name');
     return Map<String, dynamic>.from(responseData as Map);

@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
+
 import '../../core/network/erpnext_repository.dart';
 import '../../core/network/frappe_client.dart';
 
@@ -9,47 +12,84 @@ class LeaveRepository extends ERPNextRepository {
 
   /// Get all leave applications for an employee
   Future<List<Map<String, dynamic>>> getEmployeeLeaves(String employeeId) async {
-    return list(
-      fields: [
-        'name',
-        'employee',
-        'employee_name',
-        'leave_type',
-        'from_date',
-        'to_date',
-        'total_leave_days',
-        'status',
-        'reason',
-        'half_day',
-        'half_day_date',
-        'posting_date',
-      ],
-      filters: [
-        ['employee', '=', employeeId],
-      ],
-      orderBy: 'from_date desc',
-      limit: 100,
-    );
+    try {
+      return await list(
+        fields: [
+          'name',
+          'employee',
+          'employee_name',
+          'leave_type',
+          'from_date',
+          'to_date',
+          'total_leave_days',
+          'status',
+          // Removed 'reason' - not permitted for Employee role
+          // Removed 'half_day', 'half_day_date' - may not be accessible
+          'posting_date',
+        ],
+        filters: [
+          ['employee', '=', employeeId],
+        ],
+        orderBy: 'from_date desc',
+        limit: 100,
+      );
+    } on DioException catch (e) {
+      debugPrint('Error fetching leave applications: ${e.response?.data}');
+      // If field permission error, try with minimal fields
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 417) {
+        try {
+          return await list(
+            fields: [
+              'name',
+              'employee',
+              'employee_name',
+              'leave_type',
+              'from_date',
+              'to_date',
+              'total_leave_days',
+              'status',
+            ],
+            filters: [
+              ['employee', '=', employeeId],
+            ],
+            orderBy: 'from_date desc',
+            limit: 100,
+          );
+        } catch (e2) {
+          debugPrint('Retry with minimal fields also failed: $e2');
+          rethrow;
+        }
+      }
+      rethrow;
+    } catch (e) {
+      debugPrint('Unexpected error fetching leave applications: $e');
+      rethrow;
+    }
   }
 
   /// Get pending leave applications
   Future<List<Map<String, dynamic>>> getPendingLeaves(String employeeId) async {
-    return list(
-      fields: [
-        'name',
-        'leave_type',
-        'from_date',
-        'to_date',
-        'total_leave_days',
-        'status',
-        'reason',
-      ],
-      filters: [
-        ['employee', '=', employeeId],
-        ['status', '=', 'Open'],
-      ],
-      orderBy: 'from_date asc',
-    );
+    try {
+      return await list(
+        fields: [
+          'name',
+          'leave_type',
+          'from_date',
+          'to_date',
+          'total_leave_days',
+          'status',
+          // Removed 'reason' - not permitted for Employee role
+        ],
+        filters: [
+          ['employee', '=', employeeId],
+          ['status', '=', 'Open'],
+        ],
+        orderBy: 'from_date asc',
+      );
+    } catch (e) {
+      debugPrint('Error fetching pending leaves: $e');
+      return [];
+    }
   }
 
   /// Create a new leave application
@@ -90,24 +130,58 @@ class LeaveAllocationRepository extends ERPNextRepository {
 
   /// Get leave balances for an employee
   Future<List<Map<String, dynamic>>> getLeaveBalances(String employeeId) async {
-    return list(
-      fields: [
-        'name',
-        'employee',
-        'leave_type',
-        'from_date',
-        'to_date',
-        'total_leaves_allocated',
-        'unused_leaves',
-        'expired_leaves',
-        'new_leaves_allocated',
-      ],
-      filters: [
-        ['employee', '=', employeeId],
-        ['docstatus', '=', 1], // Only submitted allocations
-      ],
-      orderBy: 'from_date desc',
-    );
+    try {
+      return await list(
+        fields: [
+          'name',
+          'employee',
+          'leave_type',
+          'from_date',
+          'to_date',
+          'total_leaves_allocated',
+          'unused_leaves',
+          // Removed 'expired_leaves' - not permitted for Employee role
+          'new_leaves_allocated',
+        ],
+        filters: [
+          ['employee', '=', employeeId],
+          ['docstatus', '=', 1], // Only submitted allocations
+        ],
+        orderBy: 'from_date desc',
+      );
+    } on DioException catch (e) {
+      debugPrint('Error fetching leave balances: ${e.response?.data}');
+      // If docstatus or field permission error, try with minimal fields
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 417 || e.response?.statusCode == 500) {
+        try {
+          return await list(
+            fields: [
+              'name',
+              'employee',
+              'leave_type',
+              'from_date',
+              'to_date',
+              'total_leaves_allocated',
+              'unused_leaves',
+            ],
+            filters: [
+              ['employee', '=', employeeId],
+            ],
+            orderBy: 'from_date desc',
+          );
+        } catch (e2) {
+          debugPrint('Retry with minimal fields also failed: $e2');
+          // Return empty list instead of throwing to prevent crashes
+          return [];
+        }
+      }
+      // Return empty list on permission errors instead of crashing
+      return [];
+    } catch (e) {
+      debugPrint('Unexpected error fetching leave balances: $e');
+      // Return empty list instead of throwing to prevent crashes
+      return [];
+    }
   }
 
   /// Get available leave types for an employee
@@ -136,20 +210,58 @@ class LeaveTypeRepository extends ERPNextRepository {
 
   /// Get all active leave types
   Future<List<Map<String, dynamic>>> getActiveLeaveTypes() async {
-    return list(
-      fields: [
-        'name',
-        'leave_type_name',
-        'max_leaves_allowed',
-        'is_optional_leave',
-        'is_compensatory',
-        'is_carry_forward',
-      ],
-      filters: [
-        ['is_active', '=', 1],
-      ],
-      orderBy: 'leave_type_name asc',
-    );
+    try {
+      return await list(
+        fields: [
+          'name',
+          'leave_type_name',
+          'max_leaves_allowed',
+          'is_optional_leave',
+          'is_compensatory',
+          'is_carry_forward',
+        ],
+        filters: [
+          ['is_active', '=', 1],
+        ],
+        orderBy: 'leave_type_name asc',
+      );
+    } on DioException catch (e) {
+      debugPrint('Error fetching leave types: ${e.response?.data}');
+      // If field permission error, try with minimal fields
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 417) {
+        try {
+          return await list(
+            fields: [
+              'name',
+              'leave_type_name',
+            ],
+            filters: [
+              ['is_active', '=', 1],
+            ],
+            orderBy: 'leave_type_name asc',
+          );
+        } catch (e2) {
+          debugPrint('Retry with minimal fields also failed: $e2');
+          // Try without is_active filter in case it's not permitted
+          try {
+            return await list(
+              fields: [
+                'name',
+                'leave_type_name',
+              ],
+              orderBy: 'leave_type_name asc',
+            );
+          } catch (e3) {
+            debugPrint('Retry without filter also failed: $e3');
+            rethrow;
+          }
+        }
+      }
+      rethrow;
+    } catch (e) {
+      debugPrint('Unexpected error fetching leave types: $e');
+      rethrow;
+    }
   }
 }
 

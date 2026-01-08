@@ -52,7 +52,7 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
     final timeSvc = ref.watch(timeSyncServiceProvider).valueOrNull;
     final now = (timeSvc?.nowUtc() ?? DateTime.now().toUtc()).toLocal();
 
-    final greeting = _greeting(now);
+           final greeting = _greeting(now, t);
     final displayName = (att.valueOrNull?.employeeName?.isNotEmpty == true)
         ? att.valueOrNull!.employeeName!
         : (auth?.user ?? '—');
@@ -69,9 +69,9 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
                   _HeaderRow(
                     greeting: greeting,
                     name: displayName,
-                    statusText: att.valueOrNull == null
-                        ? 'Currently: —'
-                        : 'Currently: ${(att.valueOrNull!.lastLogType == 'IN') ? 'On the Clock' : 'Off the Clock'}',
+                          statusText: att.valueOrNull == null
+                              ? (t.isAr ? 'حالياً: —' : 'Currently: —')
+                              : (att.valueOrNull!.lastLogType == 'IN') ? t.currentlyOnClock : t.currentlyOffClock,
                     onProfileTap: () => context.push('/home/more'),
                   ),
                   const SizedBox(height: 18),
@@ -139,44 +139,48 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
   }
 }
 
-String _greeting(DateTime now) {
+String _greeting(DateTime now, AppTexts t) {
   final h = now.hour;
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return t.goodMorning;
+  if (h < 17) return t.goodAfternoon;
+  return t.goodEvening;
 }
 
 String _friendlyError(AppTexts t, String msg) {
   // Handle error codes with prefixes (e.g., "api_error: ...", "checkin_failed: ...")
   if (msg.startsWith('api_error: ')) {
     final apiMsg = msg.substring('api_error: '.length);
-    return 'API Error: $apiMsg';
+    return '${t.apiError}: $apiMsg';
   }
   if (msg.startsWith('checkin_failed: ')) {
     final failMsg = msg.substring('checkin_failed: '.length);
-    return 'Check-in failed: $failMsg';
+    return '${t.checkinFailed}: $failMsg';
   }
   
   switch (msg) {
     case 'location_permission_required':
       return t.locationPermissionRequired;
     case 'mock_location_detected':
-      return 'Mock location detected. Disable GPS spoofing to continue.';
+      return t.mockLocationDetectedMsg;
     case 'geofence_locked':
     case 'location_services_disabled':
-      return 'You must be within the office geofence.';
+      return t.mustBeInGeofence;
     case 'biometric_failed':
-      return 'Biometric verification failed.';
+      return t.biometricFailed;
     case 'time_service_unavailable':
-      return 'Unable to get system time. Please try again.';
+      return t.timeServiceUnavailable;
     case 'user_not_authenticated':
-      return 'User not authenticated. Please log in again.';
+      return t.userNotAuthenticated;
     default:
+      // Check if it's a duplicate check-in error
+      if (msg.contains('already recorded') || msg.contains('same timestamp') || msg.contains('already has')) {
+        return t.alreadyRecorded;
+      }
       // Include the actual error message for debugging
       if (msg != 'unknown' && !msg.startsWith('Unable to mark attendance')) {
-        return 'Unable to mark attendance: $msg';
+        return '${t.unableToMarkAttendance}: $msg';
       }
-      return 'Unable to mark attendance. Please try again.';
+      return t.unableToMarkAttendanceRetry;
   }
 }
 
@@ -187,20 +191,20 @@ Future<void> _handleError(BuildContext context, AppTexts t, String msg) async {
     // Show dialog with option to open settings
     final shouldOpen = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Location Permission Required'),
-        content: Text(errorText),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
+             builder: (ctx) => AlertDialog(
+                 title: Text(t.locationPermissionRequiredTitle),
+                 content: Text(errorText),
+                 actions: [
+                   TextButton(
+                     onPressed: () => Navigator.of(ctx).pop(false),
+                     child: Text(t.cancel),
+                   ),
+                   TextButton(
+                     onPressed: () => Navigator.of(ctx).pop(true),
+                     child: Text(t.openSettings),
+                   ),
+                 ],
+               ),
     );
     
     if (shouldOpen == true) {
@@ -341,7 +345,7 @@ class _HeroClock extends StatelessWidget {
   }
 }
 
-class _MainActionSection extends StatelessWidget {
+class _MainActionSection extends ConsumerWidget {
   const _MainActionSection({
     required this.t,
     required this.state,
@@ -355,23 +359,32 @@ class _MainActionSection extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.texts(ref);
     final locked = state.locked;
     final next = state.nextLogType;
     final isIn = next == 'IN';
 
-    final buttonText = locked ? 'Locked' : (isIn ? 'Tap to Check In' : 'Tap to Check Out');
+    final buttonText = locked ? t.locked : (isIn ? t.tapToCheckIn : t.tapToCheckOut);
     final gradient = locked
         ? const LinearGradient(colors: [Color(0xFFCBD5E1), Color(0xFFE2E8F0)])
         : isIn
-            ? const LinearGradient(colors: [Color(0xFF0B7A75), Color(0xFF14A085)])
+            ? const LinearGradient(colors: [Color(0xFF1C4CA5), Color(0xFF3B6FD8)])
             : const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEF4444)]);
 
     String? helper;
     if (state.mockLocationDetected) {
-      helper = 'Mock location detected';
+      helper = t.mockLocationDetected;
     } else if (state.geofenceEnabled && !state.withinGeofence && state.distanceMeters != null) {
-      helper = 'Outside geofence • ${state.distanceMeters!.toStringAsFixed(0)}m away';
+      helper = t.isAr 
+        ? '${t.outsideGeofence} • ${state.distanceMeters!.toStringAsFixed(0)}م بعيداً'
+        : '${t.outsideGeofence} • ${state.distanceMeters!.toStringAsFixed(0)}m away';
+    } else if (state.geofenceError == 'location_permission_denied') {
+      helper = t.locationPermissionDenied;
+    } else if (state.geofenceError == 'location_services_disabled') {
+      helper = t.locationServicesDisabled;
+    } else if (state.geofenceError != null) {
+      helper = '${t.geofenceError}: ${state.geofenceError}';
     }
 
     return Column(
@@ -381,11 +394,12 @@ class _MainActionSection extends StatelessWidget {
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeInCubic,
           child: _PunchButton(
-            key: ValueKey<String>('btn_${locked ? 'locked' : next}'),
-            enabled: !locked,
+            key: ValueKey<String>('btn_${locked ? 'locked' : next}_${state.syncing ? 'syncing' : 'idle'}'),
+            enabled: !locked && !state.syncing,
+            syncing: state.syncing,
             gradient: gradient,
             text: buttonText,
-            ripple: locked ? const AlwaysStoppedAnimation(0) : ripple,
+            ripple: (locked || state.syncing) ? const AlwaysStoppedAnimation(0) : ripple,
             onPressed: onTap,
           ),
         ),
@@ -397,7 +411,11 @@ class _MainActionSection extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                helper ?? 'You are at: Downtown Office (Verified)',
+                helper ?? (state.officeLocationName != null 
+                  ? (t.isAr 
+                    ? 'أنت في: ${state.officeLocationName} (مُتحقق)'
+                    : 'You are at: ${state.officeLocationName} (Verified)')
+                  : t.verifiedAt),
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF64748B)),
                             ),
@@ -413,6 +431,7 @@ class _PunchButton extends StatelessWidget {
   const _PunchButton({
     super.key,
     required this.enabled,
+    required this.syncing,
     required this.gradient,
     required this.text,
     required this.ripple,
@@ -420,6 +439,7 @@ class _PunchButton extends StatelessWidget {
   });
 
   final bool enabled;
+  final bool syncing;
   final LinearGradient gradient;
   final String text;
   final Animation<double> ripple;
@@ -471,19 +491,29 @@ class _PunchButton extends StatelessWidget {
                 height: diameter,
                 width: diameter,
                 child: Center(
-                  child: Text(
-                    text,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 20,
-                      height: 1.1,
-                    ),
-                  ),
+                  child: syncing
+                      ? SizedBox(
+                          width: diameter * 0.35,
+                          height: diameter * 0.35,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 4,
+                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                            backgroundColor: Colors.white.withOpacity(0.3),
+                          ),
+                        )
+                      : Text(
+                          text,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                            height: 1.1,
+                          ),
+                        ),
                 ),
               ),
-                ),
+            ),
               ),
             ],
           ),
@@ -504,7 +534,7 @@ class _RipplePainter extends CustomPainter {
       final p = (progress + i * 0.22) % 1.0;
       final radius = base + (size.shortestSide * 0.55) * p;
       final opacity = (1.0 - p).clamp(0.0, 1.0) * 0.18;
-      final paint = Paint()..color = const Color(0xFF0B7A75).withOpacity(opacity);
+      final paint = Paint()..color = const Color(0xFF1C4CA5).withOpacity(opacity);
       canvas.drawCircle(center, radius, paint);
     }
   }
@@ -513,13 +543,14 @@ class _RipplePainter extends CustomPainter {
   bool shouldRepaint(covariant _RipplePainter oldDelegate) => oldDelegate.progress != progress;
 }
 
-class _AnalyticsRow extends StatelessWidget {
+class _AnalyticsRow extends ConsumerWidget {
   const _AnalyticsRow({required this.analytics});
 
   final AttendanceAnalytics? analytics;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.texts(ref);
     final a = analytics ??
         const AttendanceAnalytics(
           todayWorked: Duration.zero,
@@ -537,7 +568,7 @@ class _AnalyticsRow extends StatelessWidget {
       children: [
         Expanded(
           child: _MetricCard(
-            title: 'Hours Today',
+            title: t.hoursToday,
             value: todayValue,
             progress: todayProgress,
           ),
@@ -545,7 +576,7 @@ class _AnalyticsRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _MetricCard(
-            title: 'Weekly Total',
+            title: t.weeklyTotal,
             value: weekValue,
             progress: weekProgress,
           ),
@@ -596,7 +627,7 @@ class _MetricCard extends StatelessWidget {
                 minHeight: 8,
                 value: progress.clamp(0, 1),
                 backgroundColor: const Color(0xFFEAEFF4),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF0B7A75)),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF1C4CA5)),
               ),
             ),
           ],
@@ -606,32 +637,44 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _RecentActivitySheet extends StatelessWidget {
+class _RecentActivitySheet extends ConsumerWidget {
   const _RecentActivitySheet({required this.now, required this.recent});
 
   final DateTime now;
   final List<CheckinEvent> recent;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.texts(ref);
     final theme = Theme.of(context);
     final today = DateUtils.dateOnly(now);
     final yesterday = today.subtract(const Duration(days: 1));
 
+    // Get the most recent IN/OUT events for today and yesterday
     CheckinEvent? todayEvent;
     CheckinEvent? yesterdayEvent;
-    for (final e in recent) {
+    
+    // Sort recent by time (most recent first) and find today's and yesterday's events
+    final sortedRecent = List<CheckinEvent>.from(recent);
+    sortedRecent.sort((a, b) => b.time.compareTo(a.time)); // Most recent first
+    
+    for (final e in sortedRecent) {
       final d = DateUtils.dateOnly(e.time.toLocal());
-      if (todayEvent == null && d == today) todayEvent = e;
-      if (yesterdayEvent == null && d == yesterday) yesterdayEvent = e;
+      if (todayEvent == null && d == today) {
+        todayEvent = e;
+      }
+      if (yesterdayEvent == null && d == yesterday) {
+        yesterdayEvent = e;
+      }
       if (todayEvent != null && yesterdayEvent != null) break;
     }
 
     String formatEvent(CheckinEvent? e) {
       if (e == null) return '—';
-      final t = DateFormat('HH:mm').format(e.time.toLocal());
-      final status = e.logType == 'IN' ? 'Checked In' : 'Checked Out';
-      return '$status • $t';
+      final timeStr = DateFormat('HH:mm').format(e.time.toLocal());
+      final status = e.logType == 'IN' ? t.checkedIn : t.checkedOut;
+      final lateIndicator = (e.isLateEntry && e.logType == 'IN') ? ' • ${t.lateEntry}' : '';
+      return '$status • $timeStr$lateIndicator';
     }
 
     return Container(
@@ -644,21 +687,21 @@ class _RecentActivitySheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Recent Activity', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+            Text(t.recentActivity, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Expanded(
               child: ListView(
                 children: [
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('Today', style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    title: Text(t.today, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800)),
                     subtitle: Text(formatEvent(todayEvent), style: theme.textTheme.bodyMedium),
                     leading: const Icon(Icons.history_rounded, color: Color(0xFF64748B)),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('Yesterday', style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    title: Text(t.yesterday, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
                     subtitle: Text(formatEvent(yesterdayEvent), style: theme.textTheme.bodyMedium),
                     leading: const Icon(Icons.history_rounded, color: Color(0xFF64748B)),
                     trailing: OutlinedButton(
@@ -668,17 +711,57 @@ class _RecentActivitySheet extends StatelessWidget {
                         minimumSize: const Size(0, 34),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                       ),
-                      child: const Text('Quick Note +'),
+                      child: Text(t.quickNote),
                     ),
                   ),
-                  if (recent.isNotEmpty) ...[
+                  if (sortedRecent.isNotEmpty) ...[
                     const Divider(height: 1),
-                    ...recent.take(10).map(
+                    ...sortedRecent.take(10).map(
                           (e) => ListTile(
                             contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              e.logType == 'IN' ? 'Checked In' : 'Checked Out',
-                              style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+                            title: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    e.logType == 'IN' ? t.checkedIn : t.checkedOut,
+                                    style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                                if (e.isLateEntry && e.logType == 'IN')
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.orange, width: 1),
+                                    ),
+                                    child: Text(
+                                      t.lateEntry,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.orange[800],
+                                      ),
+                                    ),
+                                  ),
+                                if (e.isEarlyExit && e.logType == 'OUT')
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.red, width: 1),
+                                    ),
+                                    child: Text(
+                                      t.earlyExit,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.red[800],
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                             subtitle: Text(
                               DateFormat('EEE, MMM d • HH:mm').format(e.time.toLocal()),
@@ -686,7 +769,11 @@ class _RecentActivitySheet extends StatelessWidget {
                             ),
                             leading: Icon(
                               e.logType == 'IN' ? Icons.login_rounded : Icons.logout_rounded,
-                              color: const Color(0xFF64748B),
+                              color: (e.isLateEntry && e.logType == 'IN') 
+                                  ? Colors.orange 
+                                  : (e.isEarlyExit && e.logType == 'OUT')
+                                      ? Colors.red
+                                      : const Color(0xFF64748B),
                             ),
                           ),
                         ),
@@ -701,11 +788,12 @@ class _RecentActivitySheet extends StatelessWidget {
   }
 }
 
-class _OfflineIndicator extends StatelessWidget {
+class _OfflineIndicator extends ConsumerWidget {
   const _OfflineIndicator();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.texts(ref);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -714,12 +802,12 @@ class _OfflineIndicator extends StatelessWidget {
         boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 18, offset: Offset(0, 8))],
         border: Border.all(color: const Color(0xFF111827).withOpacity(0.08)),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.cloud_off_rounded, size: 16, color: Color(0xFF64748B)),
-          SizedBox(width: 6),
-          Text('Syncing Later', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+          const Icon(Icons.cloud_off_rounded, size: 16, color: Color(0xFF64748B)),
+          const SizedBox(width: 6),
+          Text(t.syncingLater, style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -750,19 +838,20 @@ class _DebugStamp extends StatelessWidget {
   }
 }
 
-class _ErrorBanner extends StatelessWidget {
+class _ErrorBanner extends ConsumerWidget {
   const _ErrorBanner({required this.onRetry});
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.texts(ref);
     return Row(
       children: [
         Expanded(
           child: OutlinedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Retry'),
+            label: Text(t.retry),
           ),
         ),
       ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/storage/secure_kv.dart';
 import '../../l10n/app_texts.dart';
 import 'auth_controller.dart';
 
@@ -16,6 +17,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscure = true;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedUsername();
+  }
+
+  Future<void> _loadRememberedUsername() async {
+    final remembered = await SecureKv.read(SecureKeys.rememberMeEnabled);
+    if (remembered == '1') {
+      final username = await SecureKv.read(SecureKeys.rememberedUsername);
+      if (username != null && username.isNotEmpty) {
+        setState(() {
+          _userCtrl.text = username;
+          _rememberMe = true;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -35,7 +56,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       next.whenOrNull(
         error: (_, __) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(t.invalidLogin),
                 backgroundColor: theme.colorScheme.error,
@@ -61,20 +82,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               constraints: const BoxConstraints(maxWidth: 400),
               child: Form(
                 key: _formKey,
-                child: Column(
+            child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                     // Logo/Brand Section
                     Container(
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0B7A75),
+                        color: const Color(0xFF1C4CA5),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0B7A75).withOpacity(0.3),
+                            color: const Color(0xFF1C4CA5).withOpacity(0.3),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -89,8 +110,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     const SizedBox(height: 32),
 
                     // Title Section
-                    Text(
-                      t.appTitle,
+                Text(
+                  t.appTitle,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 28,
@@ -113,13 +134,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                     // Username Field - Flat Design
                     TextFormField(
-                      controller: _userCtrl,
-                      keyboardType: TextInputType.emailAddress,
+                  controller: _userCtrl,
+                  keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      autofillHints: const [AutofillHints.username, AutofillHints.email],
+                  autofillHints: const [AutofillHints.username, AutofillHints.email],
                       style: const TextStyle(fontSize: 16),
-                      decoration: InputDecoration(
-                        labelText: t.emailOrUsername,
+                  decoration: InputDecoration(
+                    labelText: t.emailOrUsername,
                         labelStyle: const TextStyle(
                           color: Color(0xFF94A3B8),
                           fontSize: 14,
@@ -143,7 +164,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: const BorderSide(
-                            color: Color(0xFF0B7A75),
+                            color: Color(0xFF1C4CA5),
                             width: 2,
                           ),
                         ),
@@ -164,7 +185,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Please enter your email or username';
+                          return t.pleaseEnterEmail;
                         }
                         return null;
                       },
@@ -173,14 +194,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                     // Password Field - Flat Design
                     TextFormField(
-                      controller: _passCtrl,
-                      obscureText: _obscure,
+                  controller: _passCtrl,
+                  obscureText: _obscure,
                       textInputAction: TextInputAction.done,
-                      autofillHints: const [AutofillHints.password],
+                  autofillHints: const [AutofillHints.password],
                       onFieldSubmitted: (_) => _handleLogin(auth),
                       style: const TextStyle(fontSize: 16),
-                      decoration: InputDecoration(
-                        labelText: t.password,
+                  decoration: InputDecoration(
+                    labelText: t.password,
                         labelStyle: const TextStyle(
                           color: Color(0xFF94A3B8),
                           fontSize: 14,
@@ -191,8 +212,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           color: Color(0xFF64748B),
                           size: 22,
                         ),
-                        suffixIcon: IconButton(
-                          onPressed: () => setState(() => _obscure = !_obscure),
+                    suffixIcon: IconButton(
+                      onPressed: () => setState(() => _obscure = !_obscure),
                           icon: Icon(
                             _obscure
                                 ? Icons.visibility_outlined
@@ -214,7 +235,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: const BorderSide(
-                            color: Color(0xFF0B7A75),
+                            color: Color(0xFF1C4CA5),
                             width: 2,
                           ),
                         ),
@@ -235,12 +256,46 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter your password';
+                          return t.pleaseEnterPassword;
                         }
                         return null;
                       },
                     ),
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 16),
+
+                    // Remember Me Checkbox
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _rememberMe,
+                          onChanged: (value) {
+                            setState(() {
+                              _rememberMe = value ?? false;
+                            });
+                          },
+                          activeColor: const Color(0xFF1C4CA5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _rememberMe = !_rememberMe;
+                            });
+                          },
+                          child: Text(
+                            t.rememberMe,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: const Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
 
                     // Sign In Button - Flat Design
                     SizedBox(
@@ -248,7 +303,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       child: ElevatedButton(
                         onPressed: auth.isLoading ? null : () => _handleLogin(auth),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0B7A75),
+                          backgroundColor: const Color(0xFF1C4CA5),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shadowColor: Colors.transparent,
@@ -257,8 +312,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           ),
                           disabledBackgroundColor: const Color(0xFFCBD5E1),
                         ),
-                        child: auth.isLoading
-                            ? const SizedBox(
+                  child: auth.isLoading
+                      ? const SizedBox(
                                 height: 24,
                                 width: 24,
                                 child: CircularProgressIndicator(
@@ -286,10 +341,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  void _handleLogin(AsyncValue<dynamic> auth) {
+  Future<void> _handleLogin(AsyncValue<dynamic> auth) async {
     if (_formKey.currentState?.validate() ?? false) {
       final u = _userCtrl.text.trim();
       final p = _passCtrl.text;
+      
+      // Save username if "Remember Me" is checked
+      if (_rememberMe) {
+        await SecureKv.write(SecureKeys.rememberedUsername, u);
+        await SecureKv.write(SecureKeys.rememberMeEnabled, '1');
+      } else {
+        // Clear saved username if unchecked
+        await SecureKv.delete(SecureKeys.rememberedUsername);
+        await SecureKv.write(SecureKeys.rememberMeEnabled, '0');
+      }
+      
       ref.read(authControllerProvider.notifier).login(
             usernameOrEmail: u,
             password: p,

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Alkhora brand colors (based on typical corporate teal/green palette)
-  static const Color primaryColor = Color(0xFF0B7A75); // Teal/Green
-  static const Color secondaryColor = Color(0xFF14A085);
-  static const Color accentColor = Color(0xFF2DD4BF);
+  // Alkhora brand colors (blue palette)
+  static const Color primaryColor = Color(0xFF1C4CA5); // Blue
+  static const Color secondaryColor = Color(0xFF3B6FD8);
+  static const Color accentColor = Color(0xFF5A8FFF);
   static const Color backgroundColor = Color(0xFFFAFAFA);
   static const Color surfaceColor = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF1F2937);

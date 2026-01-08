@@ -39,10 +39,47 @@ class AttendancePage extends ConsumerWidget {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  itemCount: items.length,
-                  padding: const EdgeInsets.all(16),
-                  itemBuilder: (context, index) => _AttendanceCard(record: items[index]),
+              : Column(
+                  children: [
+                    // Summary Card
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Card(
+                        color: const Color(0xFF1C4CA5).withOpacity(0.1),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _SummaryItem(
+                                label: 'Total Days',
+                                value: items.length.toString(),
+                                icon: Icons.calendar_today_rounded,
+                              ),
+                              _SummaryItem(
+                                label: 'Present',
+                                value: items.where((r) => (r['status'] as String?) == 'Present').length.toString(),
+                                icon: Icons.check_circle_rounded,
+                              ),
+                              _SummaryItem(
+                                label: 'Absent',
+                                value: items.where((r) => (r['status'] as String?) == 'Absent').length.toString(),
+                                icon: Icons.cancel_rounded,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Attendance List
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: items.length,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemBuilder: (context, index) => _AttendanceCard(record: items[index]),
+                      ),
+                    ),
+                  ],
                 ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) => Center(
@@ -122,6 +159,41 @@ class _AttendanceCard extends StatelessWidget {
     } catch (_) {
       return timeStr;
     }
+  }
+}
+
+class _SummaryItem extends StatelessWidget {
+  const _SummaryItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: const Color(0xFF1C4CA5)),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1C4CA5),
+              ),
+        ),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+              ),
+        ),
+      ],
+    );
   }
 }
 

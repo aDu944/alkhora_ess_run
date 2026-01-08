@@ -6,8 +6,18 @@ class TodoRepository extends ERPNextRepository {
   @override
   String get doctype => 'ToDo';
 
-  /// Get pending approvals/todos for a user
-  Future<List<Map<String, dynamic>>> getPendingApprovals(String userId) async {
+  /// Get pending approvals/todos for the logged-in user
+  Future<List<Map<String, dynamic>>> getPendingApprovals() async {
+    // Get current user from session
+    final userRes = await dio.get('/api/method/frappe.auth.get_logged_user');
+    final userId = userRes.data is Map ? userRes.data['message'] as String? : null;
+    if (userId == null) return [];
+    
+    return getPendingApprovalsForUser(userId);
+  }
+
+  /// Get pending approvals/todos for a specific user
+  Future<List<Map<String, dynamic>>> getPendingApprovalsForUser(String userId) async {
     return list(
       fields: [
         'name',

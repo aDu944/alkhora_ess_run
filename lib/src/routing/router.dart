@@ -9,6 +9,13 @@ import '../features/home/home_page.dart';
 import '../features/leave/leave_page.dart';
 import '../features/more/more_page.dart';
 import '../features/payslip/payslip_page.dart';
+import '../features/expense/expense_page.dart';
+import '../features/payments/payments_page.dart';
+import '../features/announcement/announcement_page.dart';
+import '../features/profile/profile_page.dart';
+import '../features/holiday/holiday_page.dart';
+import '../features/approval/approval_page.dart';
+import '../features/documents/documents_page.dart';
 import '../features/placeholders/placeholder_page.dart';
 import '../features/splash/splash_page.dart';
 
@@ -46,7 +53,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'leave',
-            builder: (_, __) => const LeavePage(),
+            builder: (context, _) => Localizations.override(
+              context: context,
+              locale: const Locale('en'),
+              child: const LeavePage(),
+            ),
           ),
           GoRoute(
             path: 'attendance',
@@ -58,27 +69,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'expenses',
-            builder: (_, __) => const PlaceholderPage(title: 'Expenses'),
+            builder: (_, __) => const ExpensePage(),
+          ),
+          GoRoute(
+            path: 'payments',
+            builder: (_, __) => const PaymentsPage(),
           ),
           GoRoute(
             path: 'announcements',
-            builder: (_, __) => const PlaceholderPage(title: 'Announcements'),
+            builder: (_, __) => const AnnouncementPage(),
           ),
           GoRoute(
             path: 'profile',
-            builder: (_, __) => const PlaceholderPage(title: 'Profile'),
+            builder: (_, __) => const ProfilePage(),
           ),
           GoRoute(
             path: 'holidays',
-            builder: (_, __) => const PlaceholderPage(title: 'Holidays'),
+            builder: (_, __) => const HolidayPage(),
           ),
           GoRoute(
             path: 'documents',
-            builder: (_, __) => const PlaceholderPage(title: 'Documents'),
+            builder: (_, __) => const DocumentsPage(),
           ),
           GoRoute(
             path: 'approvals',
-            builder: (_, __) => const PlaceholderPage(title: 'Approvals'),
+            builder: (_, __) => const ApprovalPage(),
           ),
           GoRoute(
             path: 'more',

@@ -21,5 +21,7 @@ class SecureKeys {
   static const biometricEnabled = 'biometricEnabled';
   static const ntpOffsetMs = 'ntpOffsetMs';
   static const ntpLastSyncIso = 'ntpLastSyncIso';
+  static const rememberedUsername = 'rememberedUsername';
+  static const rememberMeEnabled = 'rememberMeEnabled';
 }
 

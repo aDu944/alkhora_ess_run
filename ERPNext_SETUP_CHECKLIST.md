@@ -5,11 +5,19 @@ Before the app can fully function, ensure the following are configured in ERPNex
 ## Required Doctypes & Permissions
 
 ### 1. Employee Checkin ✅ (Already working)
-- **Custom Fields** (if needed):
-  - `latitude` (Float)
-  - `longitude` (Float)  
-  - `location_accuracy` (Float, optional)
-  - `device_id` (Data, optional)
+- **Custom Fields** (REQUIRED for location tracking):
+  - `latitude` (Float) - Required to store check-in location coordinates
+  - `longitude` (Float) - Required to store check-in location coordinates
+  - `location_accuracy` (Float, optional) - GPS accuracy in meters
+  - `device_id` (Data, optional) - Device identifier
+  
+  **Note:** The app will automatically try multiple field name variations:
+  - `latitude` / `longitude` / `location_accuracy` (standard)
+  - `lat` / `lng` / `accuracy` (alternative)
+  - `checkin_latitude` / `checkin_longitude` / `checkin_accuracy`
+  - `gps_latitude` / `gps_longitude` / `gps_accuracy`
+  
+  If none of these work, add custom fields with any of these names to the Employee Checkin doctype.
 
 ### 2. Leave Application
 - **Permissions**: Employee role needs:
@@ -23,6 +31,35 @@ Before the app can fully function, ensure the following are configured in ERPNex
 ### 3. Attendance
 - **Permissions**: Employee role needs:
   - Read own Attendance
+
+- **Processing Check-ins to Attendance Records**:
+  ERPNext HRMS has a background scheduler job that automatically processes `Employee Checkin` records and creates `Attendance` records. 
+  
+  **To enable automatic processing:**
+  1. Go to ERPNext → Setup → Automation → Scheduled Job Type
+  2. Find "Mark Attendance" scheduled job
+  3. Ensure it's enabled and runs periodically (usually every hour or daily)
+  4. Alternatively, go to HR → Tools → Mark Attendance to manually process check-ins
+  
+  **Manual Processing:**
+  - Navigate to: HR → Tools → Mark Attendance
+  - Select date range and employees
+  - Click "Mark Attendance"
+  - This will create Attendance records from Employee Checkin records
+  
+  **API Method (if needed):**
+  ```python
+  # Custom API endpoint to trigger attendance marking
+  @frappe.whitelist()
+  def mark_attendance_from_checkins(employee=None, from_date=None, to_date=None):
+      from hrms.hr.doctype.employee_checkin.employee_checkin import mark_attendance
+      mark_attendance(employee, from_date, to_date)
+  ```
+  
+  **Note:** Attendance records are created based on:
+  - Check-in (IN) and Check-out (OUT) pairs
+  - Shift assignments
+  - Working hours calculation
 
 ### 4. Salary Slip (Payslip)
 - **Permissions**: Employee role needs:
@@ -50,6 +87,42 @@ Before the app can fully function, ensure the following are configured in ERPNex
 - **Permissions**: Employee role needs:
   - Read own Employee
   - Write own Employee (for profile updates - limited fields)
+
+- **Custom Fields for Multiple Check-in Locations** (OPTIONAL but recommended):
+  - `allowed_checkin_locations` (Long Text / JSON) - Store allowed locations as JSON array
+  
+  **JSON Format:**
+  ```json
+  [
+    {
+      "name": "Main Office",
+      "latitude": 25.2867,
+      "longitude": 51.5333,
+      "radius_meters": 100
+    },
+    {
+      "name": "Home",
+      "latitude": 25.2900,
+      "longitude": 51.5400,
+      "radius_meters": 50
+    },
+    {
+      "name": "Tax Authority",
+      "latitude": 25.2800,
+      "longitude": 51.5200,
+      "radius_meters": 100
+    }
+  ]
+  ```
+  
+  **Alternative Custom Field Name:**
+  - `custom_allowed_locations` (Long Text / JSON) - Same format as above
+  
+  **How it works:**
+  - If `allowed_checkin_locations` or `custom_allowed_locations` is configured for an employee, 
+    they can check-in from any of those locations (within the specified radius)
+  - If not configured, the app uses the default office location from AppConfig (if enabled)
+  - If no geofencing is configured, employees can check-in from anywhere
 
 ### 8. Holiday List
 - **Permissions**: Employee role needs:

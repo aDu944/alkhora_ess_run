@@ -15,7 +15,12 @@ class App extends ConsumerWidget {
     final locale = ref.watch(appLocaleProvider);
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
+      theme: AppTheme.light().copyWith(
+        // Use Dubai font for Arabic
+        textTheme: AppTheme.light().textTheme.apply(
+          fontFamily: locale?.languageCode == 'ar' ? 'Dubai' : null,
+        ),
+      ),
       locale: locale,
       supportedLocales: const [Locale('en'), Locale('ar')],
       localizationsDelegates: [

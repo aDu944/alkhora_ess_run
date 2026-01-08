@@ -29,6 +29,7 @@ class AppTexts {
   String get attendance => isAr ? 'الحضور' : 'Attendance';
   String get payslips => isAr ? 'الرواتب' : 'Payslips';
   String get expenses => isAr ? 'المصاريف' : 'Expenses';
+  String get payments => isAr ? 'رصيد حسابك' : 'Payments';
   String get announcements => isAr ? 'الإعلانات' : 'Announcements';
   String get profile => isAr ? 'الملف الشخصي' : 'Profile';
   String get holidays => isAr ? 'العطلات' : 'Holidays';
@@ -40,6 +41,93 @@ class AppTexts {
       isAr ? 'نحتاج إذن الموقع لتسجيل الحضور' : 'Location permission is required to mark attendance';
   String get biometricPrompt => isAr ? 'تحقق بالبصمة/الوجه' : 'Authenticate with biometrics';
   String get invalidLogin => isAr ? 'بيانات الدخول غير صحيحة' : 'Invalid credentials';
+
+  // Home page strings
+  String get currentlyOnClock => isAr ? 'حالياً: في العمل' : 'Currently: On the Clock';
+  String get currentlyOffClock => isAr ? 'حالياً: خارج العمل' : 'Currently: Off the Clock';
+  String get goodMorning => isAr ? 'صباح الخير' : 'Good morning';
+  String get goodAfternoon => isAr ? 'مساء الخير' : 'Good afternoon';
+  String get goodEvening => isAr ? 'مساء الخير' : 'Good evening';
+  String get locked => isAr ? 'مقفل' : 'Locked';
+  String get tapToCheckIn => isAr ? 'اضغط للتسجيل دخول' : 'Tap to Check In';
+  String get tapToCheckOut => isAr ? 'اضغط للتسجيل خروج' : 'Tap to Check Out';
+  String get mockLocationDetected => isAr ? 'تم اكتشاف موقع مزيف' : 'Mock location detected';
+  String get outsideGeofence => isAr ? 'خارج النطاق الجغرافي' : 'Outside geofence';
+  String get locationPermissionDenied => isAr ? 'تم رفض إذن الموقع' : 'Location permission denied';
+  String get locationServicesDisabled => isAr ? 'خدمات الموقع معطلة' : 'Location services disabled';
+  String get geofenceError => isAr ? 'خطأ في النطاق الجغرافي' : 'Geofence error';
+  String get verifiedAt => isAr ? 'أنت في: المكتب الرئيسي (مُتحقق)' : 'You are at: Downtown Office (Verified)';
+  String get hoursToday => isAr ? 'الساعات اليوم' : 'Hours Today';
+  String get weeklyTotal => isAr ? 'الإجمالي الأسبوعي' : 'Weekly Total';
+  String get recentActivity => isAr ? 'النشاط الأخير' : 'Recent Activity';
+  String get today => isAr ? 'اليوم' : 'Today';
+  String get yesterday => isAr ? 'أمس' : 'Yesterday';
+  String get thisYear => isAr ? 'هذا العام' : 'This Year';
+  String get lastYear => isAr ? 'العام الماضي' : 'Last Year';
+  String get checkedIn => isAr ? 'تم تسجيل الدخول' : 'Checked In';
+  String get checkedOut => isAr ? 'تم تسجيل الخروج' : 'Checked Out';
+  String get quickNote => isAr ? 'ملاحظة سريعة +' : 'Quick Note +';
+  String get syncingLater => isAr ? 'جارٍ المزامنة لاحقاً' : 'Syncing Later';
+  String get retry => isAr ? 'إعادة المحاولة' : 'Retry';
+  String get onTheClock => isAr ? 'في العمل' : 'On the Clock';
+  String get offTheClock => isAr ? 'خارج العمل' : 'Off the Clock';
+  String get lateEntry => isAr ? 'تأخر في الدخول' : 'Late Entry';
+  String get earlyExit => isAr ? 'خروج مبكر' : 'Early Exit';
+
+  // Error messages
+  String get apiError => isAr ? 'خطأ في API' : 'API Error';
+  String get checkinFailed => isAr ? 'فشل تسجيل الحضور' : 'Check-in failed';
+  String get mockLocationDetectedMsg => isAr ? 'تم اكتشاف موقع مزيف. يرجى تعطيل محاكاة GPS للمتابعة.' : 'Mock location detected. Disable GPS spoofing to continue.';
+  String get mustBeInGeofence => isAr ? 'يجب أن تكون ضمن النطاق الجغرافي للمكتب.' : 'You must be within the office geofence.';
+  String get biometricFailed => isAr ? 'فشل التحقق بالبصمة.' : 'Biometric verification failed.';
+  String get timeServiceUnavailable => isAr ? 'غير قادر على الحصول على وقت النظام. يرجى المحاولة مرة أخرى.' : 'Unable to get system time. Please try again.';
+  String get userNotAuthenticated => isAr ? 'انتهت صلاحية المستخدم. يرجى تسجيل الدخول مرة أخرى.' : 'User not authenticated. Please log in again.';
+  String get alreadyRecorded => isAr ? 'تم تسجيل هذا الحضور بالفعل. يرجى الانتظار قليلاً والمحاولة مرة أخرى.' : 'This check-in was already recorded. Please wait a moment and try again.';
+  String get unableToMarkAttendance => isAr ? 'غير قادر على تسجيل الحضور' : 'Unable to mark attendance';
+  String get unableToMarkAttendanceRetry => isAr ? 'غير قادر على تسجيل الحضور. يرجى المحاولة مرة أخرى.' : 'Unable to mark attendance. Please try again.';
+  String get locationError => isAr ? 'خطأ في الموقع' : 'Location error';
+  String get locationTimeout => isAr ? 'انتهت مهلة الموقع. يرجى المحاولة مرة أخرى.' : 'Location timeout. Please try again.';
+  String get locationPermissionRequiredTitle => isAr ? 'إذن الموقع مطلوب' : 'Location Permission Required';
+  String get cancel => isAr ? 'إلغاء' : 'Cancel';
+  String get openSettings => isAr ? 'فتح الإعدادات' : 'Open Settings';
+  String get unableToOpenSettings => isAr ? 'غير قادر على فتح الإعدادات' : 'Unable to open settings';
+
+  // Settings page
+  String get language => isAr ? 'اللغة' : 'Language';
+  String get languageAuto => isAr ? 'تلقائي' : 'Auto';
+  String get languageEnglish => isAr ? 'الإنجليزية' : 'English';
+  String get languageArabic => isAr ? 'العربية' : 'العربية';
+  String get selectLanguage => isAr ? 'اختر اللغة' : 'Select Language';
+  String get modules => isAr ? 'الوحدات' : 'Modules';
+  String get rememberMe => isAr ? 'تذكرني' : 'Remember me';
+
+  // Login page
+  String get pleaseEnterEmail => isAr ? 'الرجاء إدخال البريد الإلكتروني أو اسم المستخدم' : 'Please enter your email or username';
+  String get pleaseEnterPassword => isAr ? 'الرجاء إدخال كلمة المرور' : 'Please enter your password';
+
+  // Payments page
+  String get paymentsSummary => isAr ? 'ملخص المدفوعات' : 'Payments Summary';
+  String get receivedIn => isAr ? 'المستلم (داخل)' : 'Received (In)';
+  String get paidOut => isAr ? 'المدفوع (خارج)' : 'Paid (Out)';
+  String get netAmount => isAr ? 'المبلغ الصافي' : 'Net Amount';
+  String get documentId => isAr ? 'رقم المستند' : 'Document ID';
+  String get status => isAr ? 'الحالة' : 'Status';
+  String get noPaymentsYet => isAr ? 'لا توجد مدفوعات بعد' : 'No payments yet';
+  String get noPaymentsMatchFilters => isAr ? 'لا توجد مدفوعات تطابق المرشحات' : 'No payments match the filters';
+  String get clearFilters => isAr ? 'مسح المرشحات' : 'Clear Filters';
+  String get filterPayments => isAr ? 'تصفية المدفوعات' : 'Filter Payments';
+  String get dateRange => isAr ? 'نطاق التاريخ' : 'Date Range';
+  String get fromDate => isAr ? 'من تاريخ' : 'From Date';
+  String get toDate => isAr ? 'إلى تاريخ' : 'To Date';
+  String get paymentType => isAr ? 'نوع الدفع' : 'Payment Type';
+  String get all => isAr ? 'الكل' : 'All';
+  String get amountRange => isAr ? 'نطاق المبلغ' : 'Amount Range';
+  String get min => isAr ? 'الحد الأدنى' : 'Min';
+  String get max => isAr ? 'الحد الأقصى' : 'Max';
+  String get apply => isAr ? 'تطبيق' : 'Apply';
+  String get cancel => isAr ? 'إلغاء' : 'Cancel';
+  String get clearAll => isAr ? 'مسح الكل' : 'Clear All';
+  String get ofPayments => isAr ? 'من المدفوعات' : 'of payments';
 }
 
 extension AppTextsX on BuildContext {
