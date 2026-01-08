@@ -400,13 +400,20 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
         accuracy: pos.accuracy,
       );
       await _refresh(current.copyWith(employeeId: emp));
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // Log the full error details for debugging
+      debugPrint('=== CHECK-IN ERROR ===');
+      debugPrint('Error type: ${e.runtimeType}');
+      debugPrint('Error: $e');
+      debugPrint('Stack trace: $stackTrace');
+      
       // If online check-in fails, queue it for offline sync
       try {
         await OfflineQueue.enqueueAttendance(action);
         await _refresh(current);
-      } catch (_) {
-        // Even queuing failed, log it
+        debugPrint('Check-in queued for offline sync');
+      } catch (queueError) {
+        debugPrint('Failed to queue check-in: $queueError');
       }
       
       // Convert API errors to StateError with readable messages
@@ -415,6 +422,7 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
       } else {
         // Extract error message from DioException or other exceptions
         final errorMsg = e.toString();
+        debugPrint('Wrapping error as StateError: $errorMsg');
         throw StateError(errorMsg);
       }
     }
