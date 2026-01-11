@@ -255,14 +255,9 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
         // Cache shift times per date to avoid repeated API calls
         final shiftTimesCache = <String, ({TimeOfDay start, TimeOfDay end})?>{};
         
-        Future<({TimeOfDay start, TimeOfDay end})?> getShiftTimesForDate(DateTime eventDate) async {
-          final dateKey = '${eventDate.year}-${eventDate.month}-${eventDate.day}';
-          if (!shiftTimesCache.containsKey(dateKey)) {
-            shiftTimesCache[dateKey] = await getEmployeeShiftTimes(emp, eventDate);
-          }
-          return shiftTimesCache[dateKey];
-        }
-        
+        // First pass: collect unique dates
+        final uniqueDates = <DateTime>{};
+        final eventData = <Map<String, dynamic>>[];
         for (final m in raw) {
           final id = (m['name'] as String?) ?? '';
           final logType = (m['log_type'] as String?) ?? '';
@@ -275,14 +270,53 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
           
           final eventLocal = time.toLocal();
           final eventDate = DateTime(eventLocal.year, eventLocal.month, eventLocal.day);
+          uniqueDates.add(eventDate);
+          
+          eventData.add({
+            'id': id,
+            'logType': logType,
+            'time': time,
+            'eventLocal': eventLocal,
+            'eventDate': eventDate,
+          });
+        }
+        
+        // Batch fetch shift times for unique dates in parallel (limit to recent dates to prevent too many calls)
+        final datesList = uniqueDates.toList()..sort((a, b) => b.compareTo(a)); // Most recent first
+        final recentDates = datesList.take(7).toList(); // Only last 7 days
+        if (recentDates.isNotEmpty) {
+          final shiftTimesFutures = recentDates.map((date) async {
+            final dateKey = '${date.year}-${date.month}-${date.day}';
+            if (!shiftTimesCache.containsKey(dateKey)) {
+              try {
+                shiftTimesCache[dateKey] = await getEmployeeShiftTimes(emp, date).timeout(
+                  const Duration(seconds: 1),
+                  onTimeout: () => null,
+                );
+              } catch (e) {
+                debugPrint('Error fetching shift times for $dateKey: $e');
+                shiftTimesCache[dateKey] = null;
+              }
+            }
+          });
+          await Future.wait(shiftTimesFutures, eagerError: false);
+        }
+        
+        // Second pass: process events with cached shift times (synchronous lookups only)
+        for (final event in eventData) {
+          final id = event['id'] as String;
+          final logType = event['logType'] as String;
+          final time = event['time'] as DateTime;
+          final eventLocal = event['eventLocal'] as DateTime;
+          final eventDate = event['eventDate'] as DateTime;
+          final dateKey = '${eventDate.year}-${eventDate.month}-${eventDate.day}';
           
           // Check late entry (for IN events) or early exit (for OUT events)
           bool isLateEntry = false;
           bool isEarlyExit = false;
           
-          // Calculate late entry / early exit client-side using shift times
-          // (ERPNext fields may not be available or permitted in queries)
-          final shiftTimes = await getShiftTimesForDate(eventDate);
+          // Use cached shift times (synchronous lookup - no await needed)
+          final shiftTimes = shiftTimesCache[dateKey];
           
           if (logType == 'IN' && shiftTimes != null) {
             final checkInTimeOfDay = TimeOfDay.fromDateTime(eventLocal);
@@ -714,62 +748,108 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
     try {
       perm = await DeviceServices.ensureLocationPermission();
     } catch (e) {
-      state = AsyncValue.data(current.copyWith(pendingCount: await OfflineQueue.countAttendance()));
+      // Update pending count in background (non-blocking)
+      OfflineQueue.countAttendance().then((count) {
+        final currentState = state.valueOrNull;
+        if (currentState != null) {
+          state = AsyncValue.data(currentState.copyWith(pendingCount: count));
+        }
+      });
       throw StateError('location_permission_required');
     }
     
     if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-      state = AsyncValue.data(current.copyWith(pendingCount: await OfflineQueue.countAttendance()));
+      // Update pending count in background (non-blocking)
+      OfflineQueue.countAttendance().then((count) {
+        final currentState = state.valueOrNull;
+        if (currentState != null) {
+          state = AsyncValue.data(currentState.copyWith(pendingCount: count));
+        }
+      });
       throw StateError('location_permission_required');
     }
 
-    Position pos;
+    // Start location fetch IMMEDIATELY (use cached position for speed)
+    final cachedPosFuture = Geolocator.getLastKnownPosition();
+    
+    // Get client and user info in parallel with location
+    final clientFuture = ref.read(frappeClientProvider.future);
+    final user = ref.read(authControllerProvider).valueOrNull?.user;
+    if (user == null) {
+      throw StateError('user_not_authenticated');
+    }
+    
+    // Wait for client and get employee ID
+    final client = await clientFuture;
+    final repo = AttendanceRepository(client);
+    final emp = current.employeeId ?? await repo.getEmployeeIdForUser(user);
+    
+    // Get cached position (should be instant)
+    Position? cachedPos;
     try {
-      pos = await DeviceServices.getPosition();
-    } catch (e) {
-      state = AsyncValue.data(current.copyWith(pendingCount: await OfflineQueue.countAttendance()));
-      throw StateError('location_permission_required');
+      cachedPos = await cachedPosFuture;
+    } catch (_) {}
+    
+    // Use cached position if available (almost instant), otherwise fetch with timeout
+    Position pos;
+    if (cachedPos != null) {
+      // Use cached position immediately (much faster)
+      pos = cachedPos;
+      debugPrint('Using cached position for check-in');
+    } else {
+      // No cached position, must fetch (but with very short timeout)
+      try {
+        pos = await DeviceServices.getPosition().timeout(
+          const Duration(milliseconds: 800),
+          onTimeout: () {
+            throw TimeoutException('Location timeout');
+          },
+        );
+      } catch (e) {
+        // Update pending count in background (non-blocking)
+        OfflineQueue.countAttendance().then((count) {
+          final currentState = state.valueOrNull;
+          if (currentState != null) {
+            state = AsyncValue.data(currentState.copyWith(pendingCount: count));
+          }
+        });
+        throw StateError('location_permission_required');
+      }
     }
     
     if (pos.isMocked) {
       throw StateError('mock_location_detected');
     }
     
-    // Check geofencing against allowed locations for this employee
-    final client = await ref.read(frappeClientProvider.future);
-    final repo = AttendanceRepository(client);
-    final user = ref.read(authControllerProvider).valueOrNull?.user;
-    if (user == null) {
-      throw StateError('user_not_authenticated');
-    }
-    final emp = current.employeeId ?? await repo.getEmployeeIdForUser(user);
-    
-    // Fetch allowed locations
+    // Get allowed locations (with timeout for speed)
     List<AllowedLocation> allowedLocations = [];
-    try {
-      final allowedLocationsData = await repo.getAllowedCheckinLocations(emp);
-      allowedLocations = allowedLocationsData
-          .map((loc) => AllowedLocation.fromMap(loc))
-          .where((loc) => loc.latitude.abs() > 0.000001 && loc.longitude.abs() > 0.000001)
-          .toList();
-    } catch (e) {
-      debugPrint('Error fetching allowed locations during check-in: $e');
-    }
-    
-    // If no custom locations, use default office location if configured
-    if (allowedLocations.isEmpty && AppConfig.geofenceEnabled) {
-      allowedLocations = [
-        AllowedLocation(
-          name: 'Office',
-          latitude: AppConfig.officeLatitude,
-          longitude: AppConfig.officeLongitude,
-          radiusMeters: AppConfig.officeRadiusMeters,
-        ),
-      ];
-    }
-    
-    // Check if within any allowed location
-    if (allowedLocations.isNotEmpty) {
+    if (AppConfig.geofenceEnabled) {
+      try {
+        final allowedLocationsData = await repo.getAllowedCheckinLocations(emp).timeout(
+          const Duration(milliseconds: 500),
+          onTimeout: () => <Map<String, dynamic>>[],
+        );
+        allowedLocations = allowedLocationsData
+            .map((loc) => AllowedLocation.fromMap(loc))
+            .where((loc) => loc.latitude.abs() > 0.000001 && loc.longitude.abs() > 0.000001)
+            .toList();
+      } catch (e) {
+        debugPrint('Error fetching allowed locations during check-in: $e');
+      }
+      
+      // If no custom locations, use default office location if configured
+      if (allowedLocations.isEmpty) {
+        allowedLocations = [
+          AllowedLocation(
+            name: 'Office',
+            latitude: AppConfig.officeLatitude,
+            longitude: AppConfig.officeLongitude,
+            radiusMeters: AppConfig.officeRadiusMeters,
+          ),
+        ];
+      }
+      
+      // Check if within any allowed location
       bool withinAnyLocation = false;
       for (final location in allowedLocations) {
         final dist = Geolocator.distanceBetween(
@@ -844,62 +924,66 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
         accuracy: pos.accuracy,
       );
       
-      debugPrint('Check-in created successfully, refreshing state...');
+      debugPrint('Check-in created successfully, updating state immediately...');
       
-      // Wait for ERPNext to process and index the check-in
-      // ERPNext might need a moment to make the record available via API
-      await Future.delayed(const Duration(milliseconds: 800));
+      // INSTANT optimistic update - no awaits, fully synchronous
+      // This updates the button text immediately (IN -> OUT or OUT -> IN)
+      final optimisticState = current.copyWith(
+        syncing: false,
+        lastLogType: logType, // This changes nextLogType getter immediately
+      );
+      state = AsyncValue.data(optimisticState);
       
-      // Retry getting last check-in a few times if needed (ERPNext indexing delay)
-      Map<String, dynamic>? verifiedLast;
-      for (int attempt = 0; attempt < 3; attempt++) {
-        try {
-          verifiedLast = await repo.getLastCheckin(emp);
-          if (verifiedLast != null && verifiedLast['log_type'] == logType) {
-            debugPrint('Verified last check-in: ${verifiedLast['log_type']} at ${verifiedLast['time']}');
-            break;
-          }
-        } catch (e) {
-          debugPrint('Attempt ${attempt + 1} - Could not verify last check-in: $e');
-          if (attempt < 2) {
-            await Future.delayed(const Duration(milliseconds: 500));
-          }
+      debugPrint('✅ Button state updated immediately: nextLogType = ${optimisticState.nextLogType}');
+      
+      // Update pending count in background (non-blocking)
+      OfflineQueue.countAttendance().then((count) {
+        final currentState = state.valueOrNull;
+        if (currentState != null && currentState.pendingCount != count) {
+          state = AsyncValue.data(currentState.copyWith(pendingCount: count));
         }
-      }
+      }).catchError((e) {
+        debugPrint('Error counting pending: $e');
+      });
       
-      // Refresh full state data (this will update analytics, recent activity, etc.)
-      // This fetches all check-ins and recalculates analytics
-      // Keep syncing: true during refresh so spinner stays visible until button text updates
-      final refreshedState = await _refresh(
+      // Track the optimistic state timestamp to prevent stale refreshes from overwriting newer state
+      final optimisticTimestamp = DateTime.now().millisecondsSinceEpoch;
+      
+      // Refresh full state in background (non-blocking) - don't wait for it
+      _refresh(
         AttendanceViewState.initial().copyWith(
           employeeId: emp,
-          syncing: true, // Keep syncing true during refresh
+          syncing: false,
         ),
-        preferSilent: false, // Not silent - ensure UI updates
-      );
-      
-      // Small delay to ensure UI has rendered the updated button text with new lastLogType
-      await Future.delayed(const Duration(milliseconds: 300));
-      
-      // Now set syncing to false AFTER refresh completes and state has new lastLogType
-      final finalState = refreshedState.copyWith(syncing: false);
-      
-      // Force state update to ensure UI rebuilds immediately with updated button text
-      state = AsyncValue.data(finalState);
+        preferSilent: true,
+      ).then((refreshedState) {
+        // Only update if this is still the latest check-in (prevent stale refresh from overwriting newer optimistic state)
+        final currentState = state.valueOrNull;
+        if (currentState != null && currentState.lastLogType == logType) {
+          // Merge optimistic state with refreshed data, preserving the lastLogType
+          final mergedState = refreshedState.copyWith(
+            lastLogType: logType, // Preserve the optimistic lastLogType
+            syncing: false,
+          );
+          state = AsyncValue.data(mergedState);
+          ref.invalidate(attendanceRecordsProvider);
+          debugPrint('✅ Background refresh completed (merged with optimistic state)');
+          debugPrint('   Analytics - Today: ${mergedState.analytics.todayWorked.inMinutes}min, Week: ${mergedState.analytics.weekWorked.inMinutes}min');
+          debugPrint('   Recent events count: ${mergedState.recent.length}');
+          if (mergedState.recent.isNotEmpty) {
+            debugPrint('   Most recent: ${mergedState.recent.first.logType} at ${mergedState.recent.first.time}');
+          }
+        } else {
+          debugPrint('⚠️ Skipping stale background refresh (newer check-in occurred)');
+        }
+      }).catchError((e) {
+        debugPrint('Background refresh error: $e');
+        // Keep optimistic state on error
+      });
       
       // Also invalidate attendance records provider so the attendance page updates
       // Note: Attendance records might take longer to process in ERPNext
       ref.invalidate(attendanceRecordsProvider);
-      
-      debugPrint('✅ State refreshed after check-in');
-      debugPrint('   Analytics - Today: ${refreshedState.analytics.todayWorked.inMinutes}min, Week: ${refreshedState.analytics.weekWorked.inMinutes}min');
-      debugPrint('   Recent events count: ${refreshedState.recent.length}');
-      if (refreshedState.recent.isNotEmpty) {
-        debugPrint('   Most recent: ${refreshedState.recent.first.logType} at ${refreshedState.recent.first.time}');
-      }
-      if (refreshedState.recent.isNotEmpty) {
-        debugPrint('Most recent event: ${refreshedState.recent.first.logType} at ${refreshedState.recent.first.time}');
-      }
     } catch (e, stackTrace) {
       // Log the full error details for debugging
       debugPrint('=== CHECK-IN ERROR ===');

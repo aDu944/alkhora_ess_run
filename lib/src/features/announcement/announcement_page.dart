@@ -7,7 +7,7 @@ import '../../core/network/providers.dart';
 import '../../l10n/app_texts.dart';
 import 'announcement_repository.dart';
 
-final announcementsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final announcementsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final client = await ref.watch(frappeClientProvider.future);
   final employeeId = await ref.watch(employeeIdProvider.future);
   

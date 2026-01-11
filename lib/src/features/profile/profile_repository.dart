@@ -108,6 +108,7 @@ class EmployeeRepository extends ERPNextRepository {
       'branch': emp['branch'],
       'company': emp['company'],
       'date_of_joining': emp['date_of_joining'],
+      'gender': emp['gender'],
       'cell_number': emp['cell_number'],
       'personal_email': emp['personal_email'],
       'preferred_email': emp['preferred_email'],

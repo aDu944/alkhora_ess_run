@@ -4,17 +4,22 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/device/device_services.dart';
 import '../../core/network/connectivity_provider.dart';
+import '../../core/network/employee_provider.dart';
+import '../../core/network/providers.dart';
 import '../../core/time/providers.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../l10n/app_texts.dart';
+import '../leave/leave_repository.dart';
 import 'attendance_controller.dart';
 import 'attendance_models.dart';
-import 'location_map_widget.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -63,21 +68,21 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
         children: [
           const _Background(),
           SafeArea(
-        child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Column(
-            children: [
+              child: Column(
+                children: [
                   _HeaderRow(
                     greeting: greeting,
                     name: displayName,
-                          statusText: att.valueOrNull == null
-                              ? (t.isAr ? 'حالياً: —' : 'Currently: —')
-                              : (att.valueOrNull!.lastLogType == 'IN') ? t.currentlyOnClock : t.currentlyOffClock,
+                    statusText: att.valueOrNull == null
+                        ? (t.isAr ? 'حالياً: —' : 'Currently: —')
+                        : (att.valueOrNull!.lastLogType == 'IN') ? t.currentlyOnClock : t.currentlyOffClock,
                     onProfileTap: () => context.push('/home/more'),
                   ),
                   const SizedBox(height: 18),
                   _HeroClock(now: now),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 24),
                   att.when(
                     loading: () => const Padding(
                       padding: EdgeInsets.symmetric(vertical: 14),
@@ -111,15 +116,17 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
                   ),
                   const SizedBox(height: 16),
                   _AnalyticsRow(analytics: att.valueOrNull?.analytics),
-                  const SizedBox(height: 16),
-                  const LocationMapWidget(),
                   const SizedBox(height: 12),
-                  Expanded(
+                  const _LeaveBalanceCard(),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 300,
                     child: _RecentActivitySheet(
                       now: now,
                       recent: att.valueOrNull?.recent ?? const <CheckinEvent>[],
                     ),
                   ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -267,7 +274,7 @@ class _HeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Row(
-                        children: [
+      children: [
         InkWell(
           onTap: onProfileTap,
           borderRadius: BorderRadius.circular(999),
@@ -275,9 +282,9 @@ class _HeaderRow extends StatelessWidget {
             radius: 22,
             backgroundColor: Color(0xFFEEF3F6),
             child: Icon(Icons.person, color: Color(0xFF4B5563)),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
+          ),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,8 +308,8 @@ class _HeaderRow extends StatelessWidget {
                   fontSize: 20,
                 ),
               ),
-                        ],
-                      ),
+            ],
+          ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -336,7 +343,7 @@ class _HeroClock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final time = DateFormat('HH:mm').format(now);
+    final time = DateFormat('hh:mm a').format(now);
     final date = DateFormat('EEE, MMM d').format(now);
 
     return Column(
@@ -408,24 +415,68 @@ class _MainActionSection extends ConsumerWidget {
 
     return Column(
       children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 260),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          child: _PunchButton(
-            key: ValueKey<String>('btn_${locked ? 'locked' : next}_${state.syncing ? 'syncing' : 'idle'}'),
-            enabled: !locked && !state.syncing,
-            syncing: state.syncing,
-            gradient: gradient,
-            text: buttonText,
-            ripple: (locked || state.syncing) ? const AlwaysStoppedAnimation(0) : ripple,
-            onPressed: onTap,
+        SizedBox(
+          height: 280,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Map background
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  height: 280,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: const _CompactMapBackground(),
+                ),
+              ),
+              // Gradient overlay for better button visibility
+              Container(
+                height: 280,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withOpacity(0.65),
+                      Colors.white.withOpacity(0.55),
+                      Colors.white.withOpacity(0.65),
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  ),
+                ),
+              ),
+              // Button on top
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: _PunchButton(
+                  key: ValueKey<String>('btn_${locked ? 'locked' : next}_${state.syncing ? 'syncing' : 'idle'}'),
+                  enabled: !locked && !state.syncing,
+                  syncing: state.syncing,
+                  gradient: gradient,
+                  text: buttonText,
+                  ripple: (locked || state.syncing) ? const AlwaysStoppedAnimation(0) : ripple,
+                  onPressed: onTap,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+          children: [
             const Icon(Icons.location_pin, size: 18, color: Color(0xFF64748B)),
             const SizedBox(width: 6),
             Flexible(
@@ -437,10 +488,10 @@ class _MainActionSection extends ConsumerWidget {
                   : t.verifiedAt),
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF64748B)),
-                            ),
-                          ),
-                        ],
-                      ),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -560,6 +611,172 @@ class _RipplePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RipplePainter oldDelegate) => oldDelegate.progress != progress;
+}
+
+class _CompactMapBackground extends ConsumerStatefulWidget {
+  const _CompactMapBackground();
+
+  @override
+  ConsumerState<_CompactMapBackground> createState() => _CompactMapBackgroundState();
+}
+
+class _CompactMapBackgroundState extends ConsumerState<_CompactMapBackground> {
+  Position? _currentPosition;
+  bool _isLoading = true;
+  final MapController _mapController = MapController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLocation();
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchLocation() async {
+    try {
+      // First, try to get last known position for instant display
+      Position? lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null && mounted) {
+        setState(() {
+          _currentPosition = lastKnown;
+          _isLoading = false;
+        });
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            try {
+              _mapController.move(LatLng(lastKnown!.latitude, lastKnown.longitude), 16.0);
+            } catch (_) {
+              // Map not ready yet
+            }
+          }
+        });
+      }
+
+      // Then fetch current position in background (non-blocking)
+      final isLocationEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!isLocationEnabled) {
+        return; // Already showing last known position
+      }
+
+      final perm = await DeviceServices.ensureLocationPermission();
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+        return; // Already showing last known position
+      }
+
+      // Fetch current position with timeout
+      try {
+        Position? position;
+        try {
+          position = await DeviceServices.getPosition().timeout(
+            const Duration(seconds: 3),
+          );
+        } on TimeoutException {
+          position = lastKnown; // Use last known position if timeout
+        }
+        
+        if (position != null && mounted && position != _currentPosition) {
+          setState(() {
+            _currentPosition = position;
+          });
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              try {
+                _mapController.move(LatLng(position!.latitude, position.longitude), 16.0);
+              } catch (_) {
+                // Map not ready yet
+              }
+            }
+          });
+        }
+      } catch (_) {
+        // Already have last known position, continue with that
+      }
+    } catch (_) {
+      // Show gradient background if location unavailable
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading || _currentPosition == null) {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF1C4CA5).withOpacity(0.05),
+              const Color(0xFF3B6FD8).withOpacity(0.05),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final lat = _currentPosition!.latitude;
+    final lng = _currentPosition!.longitude;
+
+    return Opacity(
+      opacity: 0.85,
+      child: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          initialCenter: LatLng(lat, lng),
+          initialZoom: 16.0,
+          minZoom: 16.0,
+          maxZoom: 16.0,
+          interactionOptions: const InteractionOptions(
+            flags: InteractiveFlag.none,
+          ),
+          onMapReady: () {
+            _mapController.move(LatLng(lat, lng), 16.0);
+          },
+        ),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.alkhora.alkhora_ess',
+            maxZoom: 19,
+          ),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: LatLng(lat, lng),
+                width: 30,
+                height: 30,
+                alignment: Alignment.center,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1C4CA5),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.location_on,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AnalyticsRow extends ConsumerWidget {
@@ -727,166 +944,180 @@ class _RecentActivitySheet extends ConsumerWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+            child: Text(
               t.recentActivity,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
+                fontSize: 20,
                 color: const Color(0xFF0F172A),
               ),
             ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView(
-                shrinkWrap: false,
-                children: [
+          ),
+          Flexible(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+              shrinkWrap: true,
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
                   ListTile(
                     contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
                     title: Text(
                       t.today,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w800,
+                        fontSize: 14,
                         color: const Color(0xFF0F172A),
                       ),
                     ),
-                    subtitle: Text(
-                      formatEvent(todayEvent),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF475569),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Text(
+                        formatEvent(todayEvent),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 12,
+                          color: const Color(0xFF475569),
+                        ),
                       ),
                     ),
                     leading: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1C4CA5).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(7),
                       ),
-                      child: const Icon(Icons.history_rounded, color: Color(0xFF1C4CA5), size: 20),
+                      child: const Icon(Icons.history_rounded, color: Color(0xFF1C4CA5), size: 16),
                     ),
                   ),
-                  const Divider(height: 1),
+                  const Divider(height: 0.5),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
                     title: Text(
                       t.yesterday,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w700,
+                        fontSize: 14,
                         color: const Color(0xFF0F172A),
                       ),
                     ),
-                    subtitle: Text(
-                      formatEvent(yesterdayEvent),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF475569),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Text(
+                        formatEvent(yesterdayEvent),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 12,
+                          color: const Color(0xFF475569),
+                        ),
                       ),
                     ),
                     leading: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
                         color: const Color(0xFF6B7280).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(7),
                       ),
-                      child: const Icon(Icons.history_rounded, color: Color(0xFF6B7280), size: 20),
+                      child: const Icon(Icons.history_rounded, color: Color(0xFF6B7280), size: 16),
                     ),
                     trailing: OutlinedButton(
                       onPressed: () {},
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        minimumSize: const Size(0, 34),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        minimumSize: const Size(0, 24),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                       ),
-                      child: Text(t.quickNote),
+                      child: Text(t.quickNote, style: const TextStyle(fontSize: 11)),
                     ),
                   ),
                   if (sortedRecent.isNotEmpty) ...[
                     const Divider(height: 1),
-                    ...sortedRecent.take(10).map(
-                          (e) => ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    e.logType == 'IN' ? t.checkedIn : t.checkedOut,
-                                    style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
-                                  ),
-                                ),
-                                if (e.isLateEntry && e.logType == 'IN')
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.orange, width: 1),
-                                    ),
-                                    child: Text(
-                                      t.lateEntry,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.orange[800],
-                                      ),
-                                    ),
-                                  ),
-                                if (e.isEarlyExit && e.logType == 'OUT')
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.red, width: 1),
-                                    ),
-                                    child: Text(
-                                      t.earlyExit,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.red[800],
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            subtitle: Text(
-                              DateFormat('EEE, MMM d • HH:mm').format(e.time.toLocal()),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: const Color(0xFF475569),
-                              ),
-                            ),
-                            leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: (e.isLateEntry && e.logType == 'IN') 
-                                    ? Colors.orange.withOpacity(0.1)
-                                    : (e.isEarlyExit && e.logType == 'OUT')
-                                        ? Colors.red.withOpacity(0.1)
-                                        : const Color(0xFF64748B).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                e.logType == 'IN' ? Icons.login_rounded : Icons.logout_rounded,
-                                color: (e.isLateEntry && e.logType == 'IN') 
-                                    ? Colors.orange 
-                                    : (e.isEarlyExit && e.logType == 'OUT')
-                                        ? Colors.red
-                                        : const Color(0xFF64748B),
-                                size: 20,
-                              ),
+                    ...sortedRecent.take(10).map((e) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              e.logType == 'IN' ? t.checkedIn : t.checkedOut,
+                              style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
                             ),
                           ),
+                          if (e.isLateEntry && e.logType == 'IN')
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.orange, width: 1),
+                              ),
+                              child: Text(
+                                t.lateEntry,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.orange[800],
+                                ),
+                              ),
+                            ),
+                          if (e.isEarlyExit && e.logType == 'OUT')
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red, width: 1),
+                              ),
+                              child: Text(
+                                t.earlyExit,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red[800],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      subtitle: Text(
+                        DateFormat('EEE, MMM d • HH:mm').format(e.time.toLocal()),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF475569),
                         ),
+                      ),
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: (e.isLateEntry && e.logType == 'IN') 
+                              ? Colors.orange.withOpacity(0.1)
+                              : (e.isEarlyExit && e.logType == 'OUT')
+                                  ? Colors.red.withOpacity(0.1)
+                                  : const Color(0xFF64748B).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          e.logType == 'IN' ? Icons.login_rounded : Icons.logout_rounded,
+                          color: (e.isLateEntry && e.logType == 'IN') 
+                              ? Colors.orange 
+                              : (e.isEarlyExit && e.logType == 'OUT')
+                                  ? Colors.red
+                                  : const Color(0xFF64748B),
+                          size: 20,
+                        ),
+                      ),
+                    )),
                   ],
                 ],
               ),
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -958,6 +1189,106 @@ class _ErrorBanner extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// Provider for leave balances on home page
+final homeLeaveBalancesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final client = await ref.watch(frappeClientProvider.future);
+  final employeeId = await ref.watch(employeeIdProvider.future);
+  final leaveAllocRepo = LeaveAllocationRepository(client);
+  return leaveAllocRepo.getLeaveBalances(employeeId);
+});
+
+class _LeaveBalanceCard extends ConsumerWidget {
+  const _LeaveBalanceCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.texts(ref);
+    final balances = ref.watch(homeLeaveBalancesProvider);
+
+    return balances.when(
+      data: (bals) {
+        if (bals.isEmpty) return const SizedBox.shrink();
+        
+        // Get top 3 leave types with highest balance
+        final sortedBalances = List<Map<String, dynamic>>.from(bals);
+        sortedBalances.sort((a, b) {
+          final aBalance = (a['unused_leaves'] as num?)?.toDouble() ?? 0.0;
+          final bBalance = (b['unused_leaves'] as num?)?.toDouble() ?? 0.0;
+          return bBalance.compareTo(aBalance);
+        });
+        final topBalances = sortedBalances.take(3).toList();
+
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: InkWell(
+            onTap: () => context.push('/home/leave'),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C4CA5).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.beach_access_rounded, color: Color(0xFF1C4CA5), size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          t.leaveBalance,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F172A),
+                              ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF64748B), size: 20),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ...topBalances.map((bal) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                bal['leave_type'] as String? ?? '—',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: const Color(0xFF64748B),
+                                    ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              '${bal['unused_leaves'] ?? 0} ${t.days}',
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF1C4CA5),
+                                  ),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }

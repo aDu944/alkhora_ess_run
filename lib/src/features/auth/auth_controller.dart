@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/providers.dart';
 import '../../core/storage/secure_kv.dart';
+import '../home/attendance_controller.dart';
 import 'biometric_service.dart';
 
 class AuthSession {
@@ -41,8 +42,17 @@ class AuthController extends AsyncNotifier<AuthSession?> {
       await client.login(usernameOrEmail: usernameOrEmail, password: password);
       final u = await client.getLoggedUser();
       await SecureKv.write(SecureKeys.lastUser, u);
-      await SecureKv.write(SecureKeys.biometricEnabled, '1');
+      // Don't override biometric setting - it's set by user preference in login page
+      // Only set it if not already set (for backward compatibility)
+      final existingBiometric = await SecureKv.read(SecureKeys.biometricEnabled);
+      if (existingBiometric == null) {
+        // Default to enabled for backward compatibility, but user can change it
+        await SecureKv.write(SecureKeys.biometricEnabled, '1');
+      }
       state = AsyncValue.data(AuthSession(user: u));
+      
+      // Invalidate attendance controller to refresh state for new user
+      ref.invalidate(attendanceControllerProvider);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -59,6 +69,9 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     await client.logout();
     await SecureKv.deleteAll();
     state = const AsyncValue.data(null);
+    
+    // Invalidate attendance controller to clear cached state
+    ref.invalidate(attendanceControllerProvider);
   }
 }
 

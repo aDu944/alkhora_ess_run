@@ -9,7 +9,6 @@ import '../features/home/home_page.dart';
 import '../features/leave/leave_page.dart';
 import '../features/more/more_page.dart';
 import '../features/payslip/payslip_page.dart';
-import '../features/expense/expense_page.dart';
 import '../features/payments/payments_page.dart';
 import '../features/announcement/announcement_page.dart';
 import '../features/profile/profile_page.dart';
@@ -66,10 +65,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'payslips',
             builder: (_, __) => const PayslipPage(),
-          ),
-          GoRoute(
-            path: 'expenses',
-            builder: (_, __) => const ExpensePage(),
           ),
           GoRoute(
             path: 'payments',

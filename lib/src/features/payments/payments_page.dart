@@ -7,7 +7,7 @@ import '../../core/network/providers.dart';
 import '../../l10n/app_texts.dart';
 import '../expense/expense_repository.dart';
 
-final paymentsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final paymentsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final client = await ref.watch(frappeClientProvider.future);
   final employeeId = await ref.watch(employeeIdProvider.future);
   
@@ -96,6 +96,44 @@ final paymentFiltersProvider = StateProvider<PaymentFilters>((ref) => PaymentFil
 class PaymentsPage extends ConsumerWidget {
   const PaymentsPage({super.key});
 
+  /// Calculate running balance for payments (oldest to newest, then reverse)
+  /// Returns list with payment and balance after that payment
+  static List<Map<String, dynamic>> _calculateRunningBalance(List<Map<String, dynamic>> payments) {
+    if (payments.isEmpty) return [];
+    
+    // Sort by date ascending (oldest first) to calculate running balance
+    final sorted = List<Map<String, dynamic>>.from(payments);
+    sorted.sort((a, b) {
+      final dateA = a['posting_date'] as String? ?? '';
+      final dateB = b['posting_date'] as String? ?? '';
+      return dateA.compareTo(dateB); // Ascending (oldest first)
+    });
+    
+    // Calculate running balance starting from 0
+    double runningBalance = 0.0;
+    final itemsWithBalance = <Map<String, dynamic>>[];
+    
+    for (final payment in sorted) {
+      final direction = payment['payment_direction'] as String? ?? 'in';
+      final amount = (payment['total_claimed_amount'] as num?)?.toDouble() ?? 0.0;
+      
+      // Update running balance: IN increases balance, OUT decreases balance
+      if (direction == 'in') {
+        runningBalance += amount;
+      } else {
+        runningBalance -= amount;
+      }
+      
+      itemsWithBalance.add({
+        'payment': payment,
+        'balance': runningBalance,
+      });
+    }
+    
+    // Reverse to show newest first (as originally sorted)
+    return itemsWithBalance.reversed.toList();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.texts(ref);
@@ -135,11 +173,11 @@ class PaymentsPage extends ConsumerWidget {
           data: (items) {
             final filteredItems = filters.applyFilters(items);
             
-            // Calculate summary totals
+            // Calculate summary totals from ALL items (not filtered) - summary shows overall totals
             double totalIn = 0; // Payments received (In)
             double totalOut = 0; // Payments made (Out)
             
-            for (final item in filteredItems) {
+            for (final item in items) {
               final amount = (item['total_claimed_amount'] as num?)?.toDouble() ?? 0.0;
               final direction = item['payment_direction'] as String?;
               
@@ -189,6 +227,48 @@ class PaymentsPage extends ConsumerWidget {
                               fontWeight: FontWeight.bold,
                             ),
                       ),
+                      if (items.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Builder(
+                          builder: (context) {
+                            // Calculate date range from actual payment items
+                            DateTime? earliestDate;
+                            DateTime? latestDate;
+                            for (final item in items) {
+                              final dateStr = item['posting_date'] as String?;
+                              if (dateStr != null) {
+                                try {
+                                  final date = DateTime.parse(dateStr);
+                                  if (earliestDate == null || date.isBefore(earliestDate)) {
+                                    earliestDate = date;
+                                  }
+                                  if (latestDate == null || date.isAfter(latestDate)) {
+                                    latestDate = date;
+                                  }
+                                } catch (_) {
+                                  // Skip invalid dates
+                                }
+                              }
+                            }
+                            
+                            if (earliestDate != null && latestDate != null) {
+                              final dateRangeStr = DateFormat('MMM d, yyyy').format(earliestDate) +
+                                  ' - ' +
+                                  DateFormat('MMM d, yyyy').format(latestDate);
+                              return Text(
+                                t.isAr 
+                                    ? 'جميع المدفوعات بين $dateRangeStr'
+                                    : 'All payments between $dateRangeStr',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Colors.white.withOpacity(0.85),
+                                      fontSize: 12,
+                                    ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       Row(
                         children: [
@@ -387,14 +467,23 @@ class PaymentsPage extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            // Payments list
-                            Expanded(
-                              child: ListView.builder(
-                                itemCount: filteredItems.length,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                itemBuilder: (context, index) => _PaymentCard(payment: filteredItems[index]),
-                              ),
-                            ),
+            // Payments list (with running balance calculated)
+            Expanded(
+              child: Builder(
+                builder: (context) {
+                  // Calculate running balance (from oldest to newest, then reverse for display)
+                  final itemsWithBalance = _calculateRunningBalance(filteredItems);
+                  return ListView.builder(
+                    itemCount: itemsWithBalance.length,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemBuilder: (context, index) => _PaymentCard(
+                      payment: itemsWithBalance[index]['payment'] as Map<String, dynamic>,
+                      balance: itemsWithBalance[index]['balance'] as double,
+                    ),
+                  );
+                },
+              ),
+            ),
                           ],
                         ),
                 ),
@@ -402,21 +491,40 @@ class PaymentsPage extends ConsumerWidget {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text('Error loading payments', style: TextStyle(color: Colors.red[700])),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => ref.refresh(paymentsProvider),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+          error: (err, _) {
+            // Check if error is due to missing employee account
+            final errorMessage = err.toString();
+            final isNoAccountError = errorMessage.contains('NO_EMPLOYEE_ACCOUNT');
+            
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isNoAccountError ? Icons.account_circle_outlined : Icons.error_outline,
+                    size: 64,
+                    color: isNoAccountError ? Colors.orange[700] : Colors.red,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isNoAccountError ? t.noEmployeeAccount : 'Error loading payments',
+                    style: TextStyle(
+                      color: isNoAccountError ? Colors.orange[700] : Colors.red[700],
+                      fontSize: 16,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (!isNoAccountError) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => ref.refresh(paymentsProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -595,9 +703,13 @@ class PaymentsPage extends ConsumerWidget {
 }
 
 class _PaymentCard extends ConsumerWidget {
-  const _PaymentCard({required this.payment});
+  const _PaymentCard({
+    required this.payment,
+    this.balance,
+  });
 
   final Map<String, dynamic> payment;
+  final double? balance;
 
   String _formatAmount(num amount) {
     final formatter = NumberFormat('#,##0.00');
@@ -668,6 +780,17 @@ class _PaymentCard extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
+            if (balance != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Balance: ${_formatAmount(balance!)}',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[500],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ],
         ),
         trailing: Text(
@@ -677,7 +800,7 @@ class _PaymentCard extends ConsumerWidget {
                 color: isIn ? Colors.green[700] : Colors.orange[700],
               ),
         ),
-        isThreeLine: (voucherType != null && voucherType.isNotEmpty) || (remark != null && remark.isNotEmpty),
+        isThreeLine: (voucherType != null && voucherType.isNotEmpty) || (remark != null && remark.isNotEmpty) || balance != null,
       ),
     );
   }

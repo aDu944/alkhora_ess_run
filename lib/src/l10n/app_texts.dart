@@ -70,6 +70,10 @@ class AppTexts {
       isAr ? 'نحتاج إذن الموقع لتسجيل الحضور' : 'Location permission is required to mark attendance';
   String get biometricPrompt => isAr ? 'تحقق بالبصمة/الوجه' : 'Authenticate with biometrics';
   String get invalidLogin => isAr ? 'بيانات الدخول غير صحيحة' : 'Invalid credentials';
+  String get wrongPassword => isAr ? 'كلمة المرور غير صحيحة' : 'Incorrect password';
+  String get wrongUsername => isAr ? 'اسم المستخدم أو البريد الإلكتروني غير صحيح' : 'Incorrect username or email';
+  String get loginError => isAr ? 'حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.' : 'Login error occurred. Please try again.';
+  String get networkError => isAr ? 'خطأ في الاتصال. يرجى التحقق من الاتصال بالإنترنت.' : 'Connection error. Please check your internet connection.';
 
   // Home page strings
   String get currentlyOnClock => isAr ? 'حالياً: في العمل' : 'Currently: On the Clock';
@@ -130,6 +134,11 @@ class AppTexts {
   String get continueText => isAr ? 'متابعة' : 'Continue';
   String get modules => isAr ? 'الوحدات' : 'Modules';
   String get rememberMe => isAr ? 'تذكرني' : 'Remember me';
+  String get enableBiometric => isAr ? 'تفعيل البصمة/الوجه' : 'Enable Biometric/Face ID';
+  String get biometricAuthentication => isAr ? 'التحقق بالبصمة/الوجه' : 'Biometric Authentication';
+  String get leaveBalance => isAr ? 'رصيد الإجازات' : 'Leave Balance';
+  String get days => isAr ? 'أيام' : 'days';
+  String get biometricNotAvailable => isAr ? 'التحقق بالبصمة غير متاح على هذا الجهاز' : 'Biometric authentication is not available on this device';
 
   // Login page
   String get pleaseEnterEmail => isAr ? 'الرجاء إدخال البريد الإلكتروني أو اسم المستخدم' : 'Please enter your email or username';
@@ -157,6 +166,7 @@ class AppTexts {
   String get apply => isAr ? 'تطبيق' : 'Apply';
   String get clearAll => isAr ? 'مسح الكل' : 'Clear All';
   String get ofPayments => isAr ? 'من المدفوعات' : 'of payments';
+  String get noEmployeeAccount => isAr ? 'لا يوجد لديك حساب. يرجى التحقق من مديرك.' : "You don't have an account. Please check with your manager.";
 
   // Profile page
   String get personalInformation => isAr ? 'المعلومات الشخصية' : 'Personal Information';
@@ -171,6 +181,7 @@ class AppTexts {
   String get address => isAr ? 'العنوان' : 'Address';
   String get currentAddress => isAr ? 'العنوان الحالي' : 'Current Address';
   String get permanentAddress => isAr ? 'العنوان الدائم' : 'Permanent Address';
+  String get gender => isAr ? 'الجنس' : 'Gender';
   String get errorLoadingProfile => isAr ? 'خطأ في تحميل الملف الشخصي' : 'Error loading profile';
 }
 

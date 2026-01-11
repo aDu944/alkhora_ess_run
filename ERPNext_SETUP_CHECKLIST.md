@@ -75,6 +75,34 @@ Before the app can fully function, ensure the following are configured in ERPNex
 
 - **Expense Claim Types**: Configure expense types
 
+### 5.1. Journal Entry Account (Payments - Fast Path) ⚡
+- **Permissions**: Employee role needs:
+  - **Read** permission on `Journal Entry Account` doctype (for fast payments loading)
+  
+  **Why this is needed:**
+  - The app needs to query Journal Entry Account directly to fetch employee payments quickly
+  - Without this permission, the app falls back to a slower method (individual API calls per journal entry)
+  - This can cause slow loading times (5-10+ seconds vs. <1 second)
+  
+  **How to enable:**
+  1. Go to ERPNext → **Setup** → **Users and Permissions** → **Role Permissions Manager**
+  2. Select the **Employee** role (or the role assigned to your employees)
+  3. Search for **"Journal Entry Account"** in the doctype list
+  4. Check the **Read** permission checkbox
+  5. Click **Save**
+  6. Alternatively, go to **Setup** → **Users and Permissions** → **Role Permission for Page and Report**
+     - Select Employee role
+     - Add new rule:
+       - **Document Type**: Journal Entry Account
+       - **Permission**: Read
+       - **Apply User Permissions**: Yes (recommended for security)
+  
+  **Security Note:**
+  - Employees will only see Journal Entry Account records where they are the party
+  - The app filters by `party_type = 'Employee'` and `party = [employee_id]`
+  - This is safe as employees can only see their own payment records
+  - If you want additional security, you can create a custom API method that enforces these filters server-side
+
 ### 6. Announcement
 - **Permissions**: Employee role needs:
   - Read Announcement

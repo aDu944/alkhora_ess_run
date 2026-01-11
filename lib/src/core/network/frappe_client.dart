@@ -47,10 +47,30 @@ class FrappeClient {
 
   Future<void> login({required String usernameOrEmail, required String password}) async {
     // Frappe expects x-www-form-urlencoded for /api/method/login
-    await _dio.post(
+    final response = await _dio.post(
       '/api/method/login',
       data: FormData.fromMap({'usr': usernameOrEmail, 'pwd': password}),
     );
+    
+    // ERPNext returns 200 even on failed login, so we need to check the response
+    if (response.data is Map) {
+      final data = response.data as Map;
+      final message = data['message']?.toString().toLowerCase() ?? '';
+      
+      // Check for login failure indicators
+      if (message.contains('incorrect') || 
+          message.contains('invalid') || 
+          message.contains('not found') ||
+          message.contains('no such user') ||
+          message.contains('authentication failed')) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.badResponse,
+          error: 'Invalid credentials',
+        );
+      }
+    }
   }
 
   Future<void> logout() async {

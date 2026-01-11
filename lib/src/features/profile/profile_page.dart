@@ -96,6 +96,12 @@ class ProfilePage extends ConsumerWidget {
                 label: t.company,
                 value: data['company'] as String? ?? '—',
               ),
+              if (data['gender'] != null)
+                _InfoCard(
+                  icon: Icons.person_rounded,
+                  label: t.gender,
+                  value: data['gender'] as String,
+                ),
               if (data['date_of_joining'] != null)
                 _InfoCard(
                   icon: Icons.calendar_today_rounded,

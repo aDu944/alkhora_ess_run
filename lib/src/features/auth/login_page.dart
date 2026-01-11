@@ -1,9 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/storage/secure_kv.dart';
 import '../../l10n/app_texts.dart';
 import 'auth_controller.dart';
+import 'biometric_service.dart';
 import 'language_selection_dialog.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -19,11 +21,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _obscure = true;
   bool _rememberMe = false;
+  bool _enableBiometric = false;
+  bool _biometricAvailable = false;
 
   @override
   void initState() {
     super.initState();
     _loadRememberedUsername();
+    _checkBiometricAvailability();
   }
 
   Future<void> _loadRememberedUsername() async {
@@ -34,6 +39,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         setState(() {
           _userCtrl.text = username;
           _rememberMe = true;
+        });
+      }
+    }
+    
+    // Check if biometric was previously enabled
+    final biometricEnabled = await SecureKv.read(SecureKeys.biometricEnabled);
+    if (biometricEnabled == '1' && _biometricAvailable) {
+      setState(() {
+        _enableBiometric = true;
+      });
+    }
+  }
+
+  Future<void> _checkBiometricAvailability() async {
+    try {
+      final canCheck = await BiometricService.canAuthenticate();
+      if (mounted) {
+        setState(() {
+          _biometricAvailable = canCheck;
+        });
+      }
+    } catch (_) {
+      // Biometric not available
+      if (mounted) {
+        setState(() {
+          _biometricAvailable = false;
         });
       }
     }
@@ -69,16 +100,94 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             }
           }
         },
-        error: (_, __) {
+        error: (error, stackTrace) {
           if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+            String errorMessage = t.invalidLogin;
+            IconData? errorIcon = Icons.error_outline;
+            
+            // Check for specific error types
+            if (error is DioException) {
+              if (error.response != null) {
+                final statusCode = error.response?.statusCode;
+                final errorData = error.response?.data;
+                
+                // Check for authentication errors (401, 403)
+                if (statusCode == 401 || statusCode == 403) {
+                  // Try to extract error message from response
+                  String? message;
+                  if (errorData is Map) {
+                    message = errorData['message']?.toString() ?? 
+                              errorData['exc']?.toString() ?? 
+                              errorData['exc_type']?.toString();
+                  }
+                  
+                  // Check if message indicates wrong password
+                  if (message != null) {
+                    final msgLower = message.toLowerCase();
+                    if (msgLower.contains('password') || msgLower.contains('pwd') || msgLower.contains('incorrect')) {
+                      errorMessage = t.wrongPassword;
+                      errorIcon = Icons.lock_outline;
+                    } else if (msgLower.contains('user') || msgLower.contains('username') || msgLower.contains('email')) {
+                      errorMessage = t.wrongUsername;
+                      errorIcon = Icons.person_outline;
+                    } else {
+                      errorMessage = t.invalidLogin;
+                    }
+                  } else {
+                    errorMessage = t.invalidLogin;
+                  }
+                } else if (statusCode != null && statusCode >= 500) {
+                  errorMessage = t.loginError;
+                  errorIcon = Icons.warning_outlined;
+                }
+              } else if (error.type == DioExceptionType.connectionTimeout || 
+                         error.type == DioExceptionType.receiveTimeout ||
+                         error.type == DioExceptionType.sendTimeout) {
+                errorMessage = t.networkError;
+                errorIcon = Icons.wifi_off_outlined;
+              } else if (error.type == DioExceptionType.connectionError) {
+                errorMessage = t.networkError;
+                errorIcon = Icons.cloud_off_outlined;
+              }
+            }
+            
+            ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(t.invalidLogin),
+                content: Row(
+                  children: [
+                    Icon(errorIcon, color: Colors.white, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        errorMessage,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 backgroundColor: theme.colorScheme.error,
                 behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.all(16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                duration: const Duration(seconds: 4),
+                action: SnackBarAction(
+                  label: t.retry,
+                  textColor: Colors.white,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    // Clear password field for security on retry
+                    _passCtrl.clear();
+                    _handleLogin(auth);
+                  },
+                ),
               ),
             );
+            
+            // Clear password field on error for security
+            _passCtrl.clear();
           }
         },
       );
@@ -310,6 +419,52 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ),
                       ],
                     ),
+                    
+                    // Biometric Authentication Checkbox (only if available)
+                    if (_biometricAvailable) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _enableBiometric,
+                            onChanged: (value) {
+                              setState(() {
+                                _enableBiometric = value ?? false;
+                              });
+                            },
+                            activeColor: const Color(0xFF1C4CA5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _enableBiometric = !_enableBiometric;
+                              });
+                            },
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.fingerprint,
+                                  size: 18,
+                                  color: Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  t.enableBiometric,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: const Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 20),
 
                     // Sign In Button - Flat Design
@@ -369,6 +524,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         // Clear saved username if unchecked
         await SecureKv.delete(SecureKeys.rememberedUsername);
         await SecureKv.write(SecureKeys.rememberMeEnabled, '0');
+      }
+      
+      // Save biometric preference
+      if (_biometricAvailable) {
+        await SecureKv.write(SecureKeys.biometricEnabled, _enableBiometric ? '1' : '0');
       }
       
       ref.read(authControllerProvider.notifier).login(
