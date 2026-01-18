@@ -64,6 +64,51 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     return hasSelected != '1';
   }
 
+  /// Attempt biometric login - checks if user is saved and session is still valid
+  Future<void> biometricLogin() async {
+    state = const AsyncValue.loading();
+    final client = await ref.read(frappeClientProvider.future);
+    final lastUser = await SecureKv.read(SecureKeys.lastUser);
+    
+    if (lastUser == null || lastUser.isEmpty) {
+      state = AsyncValue.error(
+        StateError('No saved user. Please login with username and password first.'),
+        StackTrace.current,
+      );
+      return;
+    }
+    
+    try {
+      // Authenticate with biometrics
+      final ok = await BiometricService.authenticate(reason: 'Login to your account');
+      if (!ok) {
+        state = AsyncValue.error(
+          StateError('Biometric authentication failed or cancelled.'),
+          StackTrace.current,
+        );
+        return;
+      }
+      
+      // Verify session is still valid
+      final u = await client.getLoggedUser();
+      if (u == lastUser) {
+        await SecureKv.write(SecureKeys.lastUser, u);
+        state = AsyncValue.data(AuthSession(user: u));
+        
+        // Invalidate attendance controller to refresh state
+        ref.invalidate(attendanceControllerProvider);
+      } else {
+        // Session expired or user changed
+        state = AsyncValue.error(
+          StateError('Session expired. Please login again.'),
+          StackTrace.current,
+        );
+      }
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
   Future<void> logout() async {
     final client = await ref.read(frappeClientProvider.future);
     await client.logout();

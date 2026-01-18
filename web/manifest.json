@@ -1,6 +1,6 @@
 {
-    "name": "alkhora_ess",
-    "short_name": "alkhora_ess",
+    "name": "ALKHORA ESS",
+    "short_name": "ALKHORA ESS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

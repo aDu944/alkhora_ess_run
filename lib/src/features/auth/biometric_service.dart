@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 
 class BiometricService {
@@ -5,11 +6,29 @@ class BiometricService {
 
   static Future<bool> canAuthenticate() async {
     try {
-      final canCheck = await _auth.canCheckBiometrics;
+      debugPrint('BiometricService.canAuthenticate: Starting check...');
       final isSupported = await _auth.isDeviceSupported();
+      debugPrint('BiometricService.canAuthenticate: isDeviceSupported = $isSupported');
+      
+      if (!isSupported) {
+        debugPrint('BiometricService.canAuthenticate: Device not supported');
+        return false;
+      }
+      
+      final canCheck = await _auth.canCheckBiometrics;
+      debugPrint('BiometricService.canAuthenticate: canCheckBiometrics = $canCheck');
+      
       final availableBiometrics = await _auth.getAvailableBiometrics();
-      return (canCheck || isSupported) && availableBiometrics.isNotEmpty;
-    } catch (_) {
+      debugPrint('BiometricService.canAuthenticate: availableBiometrics = $availableBiometrics');
+      
+      // Return true if device is supported and has biometrics available
+      // On emulators, canCheckBiometrics might be false but device is still supported
+      final result = isSupported && (canCheck || availableBiometrics.isNotEmpty);
+      debugPrint('BiometricService.canAuthenticate: Result = $result');
+      return result;
+    } catch (e, stackTrace) {
+      debugPrint('BiometricService.canAuthenticate error: $e');
+      debugPrint('BiometricService.canAuthenticate stackTrace: $stackTrace');
       return false;
     }
   }

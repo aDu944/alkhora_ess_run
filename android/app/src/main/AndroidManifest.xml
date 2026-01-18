@@ -4,8 +4,12 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
+    <!-- Biometric authentication permission -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+    
     <application
-        android:label="alkhora_ess"
+        android:label="ALKHORA ESS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

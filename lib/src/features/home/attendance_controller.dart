@@ -179,13 +179,46 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
       debugPrint('preferEnglish: $preferEnglish');
       
       // Try multiple possible field names for English translation
-      // ERPNext might use: employee_name_english, employee_name_in_english
-      empName = empRow['employee_name_english'] as String?;
-      if (empName == null || empName.toString().trim().isEmpty) {
-        empName = empRow['employee_name_in_english'] as String?;
+      // First, try first_name and last_name (common in ERPNext)
+      final firstName = empRow['first_name'] as String?;
+      final lastName = empRow['last_name'] as String?;
+      if (firstName != null && firstName.toString().trim().isNotEmpty && 
+          RegExp(r'[a-zA-Z]').hasMatch(firstName.toString())) {
+        if (lastName != null && lastName.toString().trim().isNotEmpty && 
+            RegExp(r'[a-zA-Z]').hasMatch(lastName.toString())) {
+          empName = '${firstName.toString().trim()} ${lastName.toString().trim()}'.trim();
+          debugPrint('Found English name from first_name + last_name: $empName');
+        } else if (firstName.toString().trim().isNotEmpty) {
+          empName = firstName.toString().trim();
+          debugPrint('Found English name from first_name: $empName');
+        }
       }
+      
+      // Try employee_name_english, employee_name_in_english
+      if (empName == null || empName.trim().isEmpty) {
+        empName = empRow['employee_name_english'] as String?;
+        if (empName != null && empName.toString().trim().isNotEmpty && 
+            RegExp(r'[a-zA-Z]').hasMatch(empName.toString())) {
+          empName = empName.toString().trim();
+          debugPrint('Found English name from employee_name_english: $empName');
+        } else {
+          empName = null;
+        }
+      }
+      
+      if (empName == null || empName.trim().isEmpty) {
+        empName = empRow['employee_name_in_english'] as String?;
+        if (empName != null && empName.toString().trim().isNotEmpty && 
+            RegExp(r'[a-zA-Z]').hasMatch(empName.toString())) {
+          empName = empName.toString().trim();
+          debugPrint('Found English name from employee_name_in_english: $empName');
+        } else {
+          empName = null;
+        }
+      }
+      
       // Check all keys for any English-related field (in case field name varies)
-      if (empName == null || empName.toString().trim().isEmpty) {
+      if (empName == null || empName.trim().isEmpty) {
         final allKeys = empRow.keys.toList();
         final englishKeys = allKeys.where((k) => 
           k.toString().toLowerCase().contains('english') || 
@@ -194,14 +227,17 @@ class AttendanceController extends AsyncNotifier<AttendanceViewState> {
         ).toList();
         debugPrint('Found potential English keys: $englishKeys');
         for (final key in englishKeys) {
-          final value = empRow[key] as String?;
-          if (value != null && value.toString().trim().isNotEmpty) {
-            debugPrint('Trying key $key: $value');
-            // Check if value looks like English (has Latin characters)
-            if (RegExp(r'[a-zA-Z]').hasMatch(value)) {
-              empName = value;
-              debugPrint('Using $key: $value');
-              break;
+          final value = empRow[key];
+          if (value != null) {
+            final valueStr = value.toString().trim();
+            if (valueStr.isNotEmpty) {
+              debugPrint('Trying key $key: $valueStr');
+              // Check if value looks like English (has Latin characters)
+              if (RegExp(r'[a-zA-Z]').hasMatch(valueStr)) {
+                empName = valueStr;
+                debugPrint('Using $key: $valueStr');
+                break;
+              }
             }
           }
         }

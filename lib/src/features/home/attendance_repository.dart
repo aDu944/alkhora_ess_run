@@ -60,16 +60,41 @@ class AttendanceRepository {
             // Check all keys for any English-related translation fields
             final allKeys = fullData.keys.toList();
             String? englishName;
-            for (final key in allKeys) {
-              final keyStr = key.toString().toLowerCase();
-              if (keyStr.contains('english') || 
-                  (keyStr.contains('name') && keyStr.contains('en')) ||
-                  keyStr == 'employee_name_english' ||
-                  keyStr == 'employee_name_in_english') {
-                final value = fullData[key];
-                debugPrint('Found potential English field $key: $value');
-                if (value != null && value.toString().trim().isNotEmpty) {
-                  englishName = value.toString();
+            
+            // First, try first_name and last_name (common in ERPNext)
+            final firstName = fullData['first_name'] as String?;
+            final lastName = fullData['last_name'] as String?;
+            if (firstName != null && firstName.trim().isNotEmpty && 
+                RegExp(r'[a-zA-Z]').hasMatch(firstName)) {
+              if (lastName != null && lastName.trim().isNotEmpty && 
+                  RegExp(r'[a-zA-Z]').hasMatch(lastName)) {
+                englishName = '$firstName $lastName'.trim();
+                debugPrint('Found English name from first_name + last_name: $englishName');
+              } else if (firstName.trim().isNotEmpty) {
+                englishName = firstName.trim();
+                debugPrint('Found English name from first_name: $englishName');
+              }
+            }
+            
+            // If not found, search for English-related fields
+            if (englishName == null || englishName.isEmpty) {
+              for (final key in allKeys) {
+                final keyStr = key.toString().toLowerCase();
+                if (keyStr.contains('english') || 
+                    (keyStr.contains('name') && keyStr.contains('en')) ||
+                    keyStr == 'employee_name_english' ||
+                    keyStr == 'employee_name_in_english') {
+                  final value = fullData[key];
+                  if (value != null) {
+                    final valueStr = value.toString().trim();
+                    debugPrint('Found potential English field $key: $valueStr');
+                    // Validate that it contains Latin characters (English)
+                    if (valueStr.isNotEmpty && RegExp(r'[a-zA-Z]').hasMatch(valueStr)) {
+                      englishName = valueStr;
+                      debugPrint('Using English field $key: $englishName');
+                      break; // Found a valid English name, stop searching
+                    }
+                  }
                 }
               }
             }

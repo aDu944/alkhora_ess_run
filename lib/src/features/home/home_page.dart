@@ -100,7 +100,7 @@ class _HomePageState extends ConsumerState<HomePage> with SingleTickerProviderSt
                         } catch (e, stackTrace) {
                           String msg = 'unknown';
                           if (e is StateError) {
-                            msg = e.message ?? 'unknown';
+                            msg = e.toString();
                           } else if (e is Exception) {
                             msg = e.toString();
                           } else {

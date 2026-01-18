@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Alkhora Ess</string>
+	<string>ALKHORA ESS</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -49,5 +49,7 @@
 	<string>Location permission is required to mark your attendance and verify your location.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Location permission is required to mark your attendance and verify your location.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID is used to securely unlock the app and authenticate your identity.</string>
 </dict>
 </plist>

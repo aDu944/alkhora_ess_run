@@ -55,19 +55,41 @@ class FrappeClient {
     // ERPNext returns 200 even on failed login, so we need to check the response
     if (response.data is Map) {
       final data = response.data as Map;
-      final message = data['message']?.toString().toLowerCase() ?? '';
+      final message = data['message']?.toString() ?? '';
+      final exc = data['exc']?.toString() ?? '';
+      final excType = data['exc_type']?.toString() ?? '';
       
-      // Check for login failure indicators
-      if (message.contains('incorrect') || 
-          message.contains('invalid') || 
-          message.contains('not found') ||
-          message.contains('no such user') ||
-          message.contains('authentication failed')) {
+      // Check for login failure indicators - ERPNext returns error messages on failure
+      // Success is indicated by "Logged In" or empty exc/exc_type
+      final messageLower = message.toLowerCase();
+      final excLower = exc.toLowerCase();
+      final excTypeLower = excType.toLowerCase();
+      
+      final hasError = messageLower.contains('incorrect') || 
+          messageLower.contains('invalid') || 
+          messageLower.contains('not found') ||
+          messageLower.contains('no such user') ||
+          messageLower.contains('authentication failed') ||
+          messageLower.contains('wrong') ||
+          messageLower.contains('failed') ||
+          excLower.contains('invalid') ||
+          excLower.contains('incorrect') ||
+          excTypeLower.contains('invalid') ||
+          excTypeLower.contains('authentication') ||
+          excTypeLower.contains('notfound') ||
+          (exc.isNotEmpty && !excLower.contains('none'));
+      
+      // If there's an error indicator, throw exception
+      if (hasError) {
+        // Store the original message in the error for better error handling
+        final errorMessage = message.isNotEmpty 
+            ? message 
+            : (exc.isNotEmpty ? exc : 'Invalid credentials');
         throw DioException(
           requestOptions: response.requestOptions,
           response: response,
           type: DioExceptionType.badResponse,
-          error: 'Invalid credentials',
+          error: errorMessage,
         );
       }
     }
